@@ -1,56 +1,47 @@
+// THIS_SOURCES_HAS_BEEN_TRANSLATED 
 /*
- *  All documentation (comments) unless explicitly noted:
- *
- *      Copyright 2018, AnalytixBar LLC, Jacob Stopak
- *
- *  All code & explicitly labelled documentation (comments):
- *      
- *      Copyright 2005, Linus Torvalds
- *
- *  This program is free software; you can redistribute it and/or
- *  modify it under the terms of the GNU General Public License
- *  version 2 as published by the Free Software Foundation.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with this program; if not, see <http://www.gnu.org/licenses/>.
- *
- **************************************************************************
- *
- *  The purpose of this file is to define and include the required
- *  libraries, function signatures, and defaults for the Git `.c`
- *  programs to function. This file <cache.h> is included in all
- *  the `.c` files in this same (root) directory including:
- *
- *  cat-file.c, commit-tree.c, init-db.c, read-cache.c, read-tree.c,
- *  show-diff.c, update-cache.c, write-tree.c
- */
+ *除非明确说明，否则所有文档(备注)：**版权所有2018，AnalytixBar LLC，Jacob Stopak**所有代码和明确标记的文档(注释)：**版权所有2005年，Linus Torvalds**这个程序是自由软件；您可以重新分发它和/或*根据GNU通用公共许可证的条款进行修改*自由软件基金会发布的版本2。**这个程序的分发是希望它能有用，*但没有任何保证；甚至没有*适销性或对某一特定目的的适用性。请参阅*GNU通用公共许可证，了解更多详细信息。**您应已收到GNU通用公共许可证的副本*与这项计划一起；如果不是，请参阅&lt;http://www.gnu.org/licenses/&gt;.*****************************************************************************本文件的目的是定义和包含所需的*库、函数签名、。和默认设置为Git`.c`*程序要发挥作用。此文件&lt;cache.h&gt;包含在*同一(根)目录下的`.c`文件，包括：**cat-file.c、Commit-tree.c、init-DB.c、Read-cache.c、Read-tree.c、*show-Diff.c、update-cache.c、WRITE-tree.c。
+*/ 
 
 /*
- * Only run this code in this file if `CACHE_H` has not been
- * defined yet. This is to prevent multiple compilations of the
- * same code since it's included in multiple `.c` files.
- */
+ *仅当`CACHE_H`尚未执行时才运行此文件中的代码*尚未定义。这是为了防止多次编译*代码相同，因为包含在多个`.c`文件中。
+*/ 
 #ifndef CACHE_H 
-#define CACHE_H         /* Define the token `CACHE_H`. */
+#define CACHE_H         /*
+ 定义令牌`CACHE_H`。
+*/ 
 
-#include <stdio.h>      /* Standard C library defining input/output tools. */
+#include <stdio.h>      /*
+ 定义输入/输出工具的标准C库。
+*/ 
 #include <string.h>
 #include <unistd.h>
-#include <sys/stat.h>   /* Standard C library defining `stat` tools. */
-#include <fcntl.h>      /* Standard C library for working with files. */
-#include <stddef.h>     /* Standard C library for type definitions. */
-#include <stdlib.h>     /* Standard C library for library definitions. */
-#include <stdarg.h>     /* Standard C library for variable argument lists. */
-#include <errno.h>      /* Standard C library for system error numbers. */
+#include <sys/stat.h>   /*
+ 定义`stat`工具的标准C库。
+*/ 
+#include <fcntl.h>      /*
+ 用于处理文件的标准C库。
+*/ 
+#include <stddef.h>     /*
+ 用于类型定义的标准C库。
+*/ 
+#include <stdlib.h>     /*
+ 库定义的标准C库。
+*/ 
+#include <stdarg.h>     /*
+ 变量参数列表的标准C库。
+*/ 
+#include <errno.h>      /*
+ 系统错误号的标准C库。
+*/ 
 
 #ifndef BGIT_WINDOWS
-    #include <sys/mman.h>   /* Standard C library for memory management */
-                            /* declarations. */
+    #include <sys/mman.h>   /*
+ 用于内存管理的标准C库。
+*/ 
+                            /*
+ 申报单。
+*/ 
 #else
     #include <windows.h>
     #include <lmcons.h>
@@ -58,16 +49,16 @@
     #include <io.h>
 #endif
 
-#include <openssl/sha.h>   /* Include SHA hash tools from openssl library. */
-#include <zlib.h>          /* Include compression tools from zlib library. */
+#include <openssl/sha.h>   /*
+ 包括OpenSSL库中SHA散列工具。
+*/ 
+#include <zlib.h>          /*
+ 包括来自zlib库压缩工具。
+*/ 
 
 /*
- * Linus Torvalds: Basic data structures for the directory cache.
- *
- * Linus Torvalds: NOTE NOTE NOTE! This is all in the native CPU byte format. 
- * It's not even trying to be portable. It's trying to be efficient. It's
- * just a cache, after all.
- */
+ *Linus Torvalds：目录缓存的基本数据结构。**莱纳斯·托瓦尔兹：注意，注意！这都是本机CPU字节格式。*它甚至没有试图成为便携设备。这是在努力提高效率。它是*毕竟只是一个缓存。
+*/ 
 
 #ifdef BGIT_UNIX
     #define STAT_TIME_SEC( st, st_xtim ) ( (st)->st_xtim ## e )
@@ -89,135 +80,170 @@
                                                       mode );
 #endif
 
-/* This `CACHE_SIGNATURE` is hardcoded to be loaded into all cache headers. */
-#define CACHE_SIGNATURE 0x44495243   /* Linus Torvalds: "DIRC" */
+/*
+ 此`CACHE_SIGNAURE`被硬编码为加载到所有缓存头中。
+*/ 
+#define CACHE_SIGNATURE 0x44495243   /*
+ 莱纳斯·托瓦尔兹：《DIRC》。
+*/ 
 
-/* Template of the header structure that identifies a set of cache entries. */
+/*
+ 标识一组缓存条目的标头结构模板。
+*/ 
 struct cache_header {
-    /* Constant across all headers, to validate authenticity. */
+    /*
+ 所有标头上的常量，以验证真实性。
+*/ 
     unsigned int signature; 
-    /* Stores the version of Git that created the cache. */
+    /*
+ 存储创建缓存的Git版本。
+*/ 
     unsigned int version; 
-    /* The number of cache entries in the cache. */
+    /*
+ 缓存中的缓存条目数。
+*/ 
     unsigned int entries; 
-    /* The SHA1 hash that identifies the cache. */
+    /*
+ 标识缓存的SHA1哈希。
+*/ 
     unsigned char sha1[20]; 
 };
 
 /*
- * Template of a time structure for storing the time stamps of actions taken on 
- * a file corresponding to a cache entry. For example, the time the file was 
- * modified. For some info on file times, see:
- * https://www.quora.com/What-is-the-difference-between-mtime-atime-and-ctime
- */
+ *用于存储所采取行动的时间戳的时间结构模板*与缓存条目对应的文件。例如，文件的时间*已修改。有关文件时间的一些信息，请参阅：*https://www.quora.com/What-is-the-difference-between-mtime-atime-and-ctime。
+*/ 
 struct cache_time {
     unsigned int sec;
     unsigned int nsec;
 };
 
 /*
- * Template of the cache entry structure that stores information about the 
- * corresponding user file in the working directory.
- */
+ *缓存条目结构的模板，存储有关*工作目录下对应的用户文件。
+*/ 
 struct cache_entry {
-    struct cache_time ctime;   /* Time of file's last status change. */
-    struct cache_time mtime;   /* Time of file's last modification. */
-    unsigned int st_dev;       /* Device ID of device containing the file. */
+    struct cache_time ctime;   /*
+ 文件上次状态更改的时间。
+*/ 
+    struct cache_time mtime;   /*
+ 上次修改文件的时间。
+*/ 
+    unsigned int st_dev;       /*
+ 包含文件的设备的设备ID。
+*/ 
 
-    /* 
-     * The file serial number, which distinguishes this file from all
-     * other files on the same device.
-     */
+    /*
+ *文件序列号，区分此文件与所有文件*同一设备上的其他文件。
+*/ 
     unsigned int st_ino;
 
     /*
-     * Specifies the mode of the file. This includes information about the 
-     * file type and permissions.
-     */
+ *指定文件的模式。这包括有关*文件类型和权限。
+*/ 
     unsigned int st_mode;
-    unsigned int st_uid;      /* The user ID of the file’s owner. */
-    unsigned int st_gid;      /* The group ID of the file. */
-    unsigned int st_size;     /* The size of a regular file in bytes. */
-    unsigned char sha1[20];   /* The SHA1 hash of deflated blob object. */
-    unsigned short namelen;   /* The filename or path length. */
-    unsigned char name[0];    /* The filename or path. */
+    unsigned int st_uid;      /*
+ 文件所有者的用户ID。
+*/ 
+    unsigned int st_gid;      /*
+ 文件的组ID。
+*/ 
+    unsigned int st_size;     /*
+ 常规文件的大小，以字节为单位。
+*/ 
+    unsigned char sha1[20];   /*
+ 放气的Blob对象的SHA1哈希。
+*/ 
+    unsigned short namelen;   /*
+ 文件名或路径长度。
+*/ 
+    unsigned char name[0];    /*
+ 文件名或路径。
+*/ 
 };
 
 /*
- * The following are declarations of external variables. They are defined in
- * the source code read-cache.c.
- */
+ *以下是外部变量的声明。它们在中定义*源代码Read-cache.c..。
+*/ 
 
-/* The path to the object store. */
+/*
+ 对象存储区的路径。
+*/ 
 extern const char *sha1_file_directory;
-/* An array of pointers to cache entries. */
+/*
+ 指向缓存条目的指针数组。
+*/ 
 extern struct cache_entry **active_cache;
-/* The number of entries in the `active_cache` array. */
+/*
+ `active_cache`数组中的条目数。
+*/ 
 extern unsigned int active_nr;
-/* The maximum number of elements the active_cache array can hold. */
+/*
+ ACTIVE_CACHE数组可以容纳的最大元素数。
+*/ 
 extern unsigned int active_alloc;
 
 /*
- * If desired, you can use an environment variable to set a custom path to the
- * object store.
- */
+ *如果需要，您可以使用环境变量设置指向*对象存储。
+*/ 
 #define DB_ENVIRONMENT "SHA1_FILE_DIRECTORY"
 
 /*
- * The default path to the object store.
- */
+ *对象存储的默认路径。
+*/ 
 #define DEFAULT_DB_ENVIRONMENT ".dircache/objects"
 
 /*
- * These macros are used to calculate the size to be allocated to a cache 
- * entry. 
- */
+ *这些宏用于计算要分配给缓存的大小*进入。
+*/ 
 #define cache_entry_size(len) ((offsetof(struct cache_entry, name) \
                                 + (len) + 8) & ~7)
 #define ce_size(ce) cache_entry_size((ce)->namelen)
 
 /*
- * See this link for details on this macro:
- * https://stackoverflow.com/questions/22090101/
- * why-is-define-alloc-nrx-x163-2-macro-used-in-many-cache-h-files
- */
+ *有关此宏的详细信息，请参阅此链接：*https://stackoverflow.com/questions/22090101/*why-is-define-alloc-nrx-x163-2-macro-used-in-many-cache-h-files。
+*/ 
 #define alloc_nr(x) (((x)+16)*3/2)
 
 /*
- * The following are function prototypes. They are defined in the source file
- * read-cache.c.
- */
+ *以下是函数原型。它们在源文件中定义*Read-cache.c.。
+*/ 
 
 /*
- * Read the contents of the `.dircache/index` file into the `active_cache` 
- * array. 
-*/
+ *将`.dircache/index`文件的内容读入`active_cache`*数组。
+*/ 
 extern int read_cache(void);
 
 /*
- * Linus Torvalds: Return a statically allocated filename matching the SHA1 
- * signature 
- */
+ *Linus Torvalds：返回与SHA1匹配的静态分配的文件名*签名。
+*/ 
 extern char *sha1_file_name(unsigned char *sha1);
 
-/* Linus Torvalds: Write a memory buffer out to the SHA1 file. */
+/*
+ Linus Torvalds：将内存缓冲区写出到SHA1文件。
+*/ 
 extern int write_sha1_buffer(unsigned char *sha1, void *buf, 
                              unsigned int size);
 
 /*
- * Linus Torvalds: Read and unpack a SHA1 file into memory, write memory to a 
- * SHA1 file. 
- */
+ *Linus Torvalds：将SHA1文件读取并解压缩到内存中，将内存写入*SHA1文件。
+*/ 
 extern void *read_sha1_file(unsigned char *sha1, char *type, 
                             unsigned long *size);
 extern int write_sha1_file(char *buf, unsigned len);
 
-/* Linus Torvalds: Convert to/from hex/sha1 representation. */
+/*
+ Linus Torvalds：转换为十六进制/SHA1表示法/从十六进制/SHA1表示法转换为十六进制/SHA1表示法。
+*/ 
 extern int get_sha1_hex(char *hex, unsigned char *sha1);
-/* Linus Torvalds: static buffer! */
+/*
+ 莱纳斯·托瓦尔兹：静态缓冲！
+*/ 
 extern char *sha1_to_hex(unsigned char *sha1);
 
-/* Print usage message to standard error stream. */
+/*
+ 将使用情况消息打印到标准错误流。
+*/ 
 extern void usage(const char *err);
 
-#endif /* Linus Torvalds: CACHE_H */
+#endif /*
+ 莱纳斯·托瓦尔兹：CACHE_H
+*/ 

@@ -1,165 +1,79 @@
+// THIS_SOURCES_HAS_BEEN_TRANSLATED 
 /*
- *  All documentation (comments) unless explicitly noted:
- *
- *      Copyright 2018, AnalytixBar LLC, Jacob Stopak
- *
- *  All code & explicitly labelled documentation (comments):
- *      
- *      Copyright 2005, Linus Torvalds
- *
- *  This program is free software; you can redistribute it and/or
- *  modify it under the terms of the GNU General Public License
- *  version 2 as published by the Free Software Foundation.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with this program; if not, see <http://www.gnu.org/licenses/>.
- *
- **************************************************************************
- *
- *  The purpose of this file is to be compiled into an executable
- *  called `cat-file`. When `cat-file` is run from the command line
- *  it will take as an argument the 20 hexadecimal of any object in
- *  the object store, and output the contents of that object into a
- *  file named `temp_git_file_XXXXXX`, where XXXXXX is a randomly
- *  generated character string, so you can view the object's content.
- *  Note that this implies that at least one object already exists in
- *  the object store (which means at least one file was added to the
- *  index and committed into the repository using the `update-cache`,
- *  `write-tree`, and `commit-tree` commands consecutively.
- *
- *  This whole file (i.e. everything in the main function) will run
- *  when ./cat-file executable is run from the command line.
- */
+ *除非明确说明，否则所有文档(备注)：**版权所有2018，AnalytixBar LLC，Jacob Stopak**所有代码和明确标记的文档(注释)：**版权所有2005年，Linus Torvalds**这个程序是自由软件；您可以重新分发它和/或*根据GNU通用公共许可证的条款进行修改*自由软件基金会发布的版本2。**这个程序的分发是希望它能有用，*但没有任何保证；甚至没有*适销性或对某一特定目的的适用性。请参阅*GNU通用公共许可证，了解更多详细信息。**您应已收到GNU通用公共许可证的副本*与这项计划一起；如果不是，请参阅&lt;http://www.gnu.org/licenses/&gt;.*****************************************************************************此文件的目的是编译成可执行文件*称为`Cat-file`。当从命令行运行`Cat-file`时*它将采用中任何对象的20个十六进制作为参数*对象存储，并将该对象的内容输出到*名为`TEMP_GIT_FILE_XXXXXX`的文件，其中XXXXXX是随机的*生成字符串，可以查看对象的内容。*请注意，这意味着至少有一个对象已存在于*对象存储(这意味着至少有一个文件被添加到*使用`update-cache`索引并提交到仓库中，*`WRITE-Tree`和`Commit-tree`连续命令。**整个文件(即Main函数中的所有内容)都将运行*当./cat-从命令行运行文件可执行文件时。
+*/ 
 
 #include "cache.h"
-/* The above 'include' allows use of the following functions and
-   variables from "cache.h" header file, ranked in order of first use
-   in this file. Most are functions/macros from standard C libraries
-   that are `#included` in "cache.h". Function names are followed by
-   parenthesis whereas variable/struct names are not:
-
-   -get_sha1_hex(): Convert a 40-character hexadecimal representation of an 
-                    SHA1 hash value to the equivalent 20-byte representation.
-
-   -usage(): Print an error message and exit.
-
-   -read_sha1_file(): Locate an object in the object database, read and 
-                      inflate it, then return the inflated object data 
-                      (without the prepended metadata).
-
-   -mkstemp(template): Modifies `template` to generate a unique filename, then
-                       opens the file for reading and writing and returns a 
-                       file descriptorfor the file. Sourced from <stdlib.h>.
-
-   -write(fd, buf, n): Write `n` bytes from buffer `buf` to file associated
-                       with file descriptor `fd`.
-
-   -strcpy(str1, str2): Copy string str2 to string str1, including the
-                        terminating null character.
-
-   -printf(message, ...): Write `message` to standard output stream stdout.  
-                          Sourced from <stdio.h>.
-
-   ****************************************************************
-
-   The following variables and functions are defined in this source file:
-
-   -main(argc, argv): The main function which runs each time the ./cat-file 
-                      command is run.
-
-   -argc: The number of command line arguments supplied when executing 
-          ./cat-file.
-
-   -argv: Array containing command line argument strings.
-
-   -sha1: 20-byte representation of an SHA1 hash.
-
-   -type: The type of the object that was read from the object store (blob, 
-          tree, or commit).
-
-   -buf: A buffer to store the object data.
-
-   -size: The size in bytes of the object data.
-
-   -template: A template string used to generate a unique output filename.
-
-   -fd: A file descriptor associated with the output file.
-*/
+/*
+ 上面的‘Include’允许使用以下函数和“cache.h”头文件中的变量，按第一次使用的顺序排序在这份文件中。大多数是标准C库中的函数/宏它们是“cache.h”中的`#includded`。函数名后面跟有圆括号，而变量/结构名称不是：-get_sha1_hex()：转换40个字符的十六进制表示形式将SHA1哈希值转换为等效的20字节表示形式。-Usage()：打印错误消息并退出。-READ_SHA1_FILE()：在对象数据库中定位对象，读取并给它充气，然后返回膨胀的对象数据(没有预置的元数据)。-mkstemp(模板)：修改`template`生成唯一的文件名，然后打开文件以进行读写，并返回一个文件的文件描述符。来源：&lt;stdlib.h&gt;。-WRITE(fd，buf，n)：将`N`个字节从缓冲区`buf`写入关联文件带有文件描述符`fd`。-strcpy(str1，str2)：将字符串str2复制到字符串str1，包括正在终止空字符。-print tf(Message，...)：将`Message`写入标准输出流stdout。来源：&lt;stdio.h&gt;。****************************************************************此源文件中定义了以下变量和函数：-Main(ARGC，Argv)：每次运行./cat文件时运行的主函数命令正在运行。-argc：执行时提供的命令行参数个数./cat-file。-argv：包含命令行参数字符串的数组。-sha1：sha1散列的20字节表示形式。-type：从对象存储读取的对象的类型(BLOB，树,。或提交)。-buf：用于存储对象数据的缓冲区。-Size：对象数据的字节大小。-模板：用于生成唯一输出文件名的模板字符串。-fd：与输出文件关联的文件描述符。
+*/ 
 
 /*
- * Function: `main`
- * Parameters:
- *      -argc: The number of command line arguments supplied, inluding the 
- *             command itself.
- *      -argv: An array of the command line arguments, including the command 
- *             itself.
- * Purpose: Standard `main` function definition. Runs when the executable
- *          `cat-file` is run from the command line.
- */
+ *功能：`main`*参数：*-argc：提供的命令行参数的数量，包括*命令本身。*-argv：命令行参数的数组，包括命令*本身。*用途：标准`main`函数定义。运行时，可执行文件*`cat-file`从命令行运行。
+*/ 
 int main(int argc, char **argv)
 {
-    /* Used to store the 20-byte representation of an SHA1 hash. */
+    /*
+ 用于存储SHA1哈希的20字节表示形式。
+*/ 
     unsigned char sha1[20];
-    /* Used to store the object type (blob, tree, or commit). */
+    /*
+ 用于存储对象类型(BLOB、树或提交)。
+*/ 
     char type[20];
-    /* Buffer to store the object data. */
+    /*
+ 用于存储对象数据的缓冲区。
+*/ 
     void *buf;
-    /* The size in bytes of the object data. */
+    /*
+ 对象数据的大小(字节)。
+*/ 
     unsigned long size;
-    /* A template string used to generate a unique output filename. */
+    /*
+ 用于生成唯一输出文件名的模板字符串。
+*/ 
     char template[] = "temp_git_file_XXXXXX";
-    /* File descriptor for the output file. */
+    /*
+ 输出文件的文件描述符。
+*/ 
     int fd;
 
-    /*  
-     * Validate the number of command line arguments and convert the given 
-     * 40-character hexadecimal representation of an SHA1 hash value to the 
-     * equivalent 20-byte representation. If either one fails, display usage
-     * and exit.
-     */
+    /*
+ *验证命令行参数的数量并将给定的*40个字符的SHA1哈希值的十六进制表示形式*等效的20字节表示法。如果其中一个失败，则显示使用情况*并退出。
+*/ 
     if (argc != 2 || get_sha1_hex(argv[1], sha1))
         usage("cat-file: cat-file <sha1>");
 
     /*
-     * Read the object whose SHA1 hash is `sha1` from the object store, 
-     * inflate it, and return a pointer to the object data (without the 
-     * prepended metadata). Store the object type and object data size in 
-     * `type` and `size` respectively.
-     */
+ *从对象库中读取sha1哈希值为`sha1`的对象。*将其充气，并返回指向
+*/ 
     buf = read_sha1_file(sha1, type, &size);
     
     /*
-     * Exit if `buf` is a null pointer, i.e., if reading the object from the
-     * object store failed.
-     */
+ *如果`buf`为空指针，即如果从*对象存储失败。
+*/ 
     if (!buf)
         exit(1);
 
     /*
-     * Modify `template` to generate a unique filename, then open the file for 
-     * reading and writing and return a file descriptor for the file. The 
-     * `XXXXXX` in the template is replaced with a randomly generated 
-     * alphanumeric string to generate a unique filename.
-     */
+ *修改`template`生成唯一的文件名，然后打开文件*读写并返回文件的文件描述符。这个*模板中的`XXXXXX`替换为随机生成的*用于生成唯一文件名的字母数字字符串。
+*/ 
     fd = mkstemp(template);
 
-    /* If mkstemp() fails, print error message and exit. */
+    /*
+ 如果mkstemp()失败，则打印错误消息并退出。
+*/ 
     if (fd < 0)
         usage("unable to create tempfile");
 
     /*
-     * Write the object data, which has length `size` bytes, to the output
-     * file associated with `fd`. If the number of bytes written does not 
-     * equal the object data size, then set object `type` to "bad".
-     */
+ *将对象数据写入输出，对象数据长度为`size`字节*`fd`关联的文件。如果写入的字节数不是*等于对象数据大小，然后将对象`type`设置为“Bad”。
+*/ 
     if (write(fd, buf, size) != size)
         strcpy(type, "bad");
 
-    /* Print the output filename and object type to screen. */
+    /*
+ 将输出文件名和对象类型打印到屏幕上。
+*/ 
     printf("%s: %s\n", template, type);
 }

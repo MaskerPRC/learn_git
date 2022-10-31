@@ -1,126 +1,34 @@
+// THIS_SOURCES_HAS_BEEN_TRANSLATED 
 /*
- *  All documentation (comments) unless explicitly noted:
- *
- *      Copyright 2018, AnalytixBar LLC, Jacob Stopak
- *
- *  All code & explicitly labelled documentation (comments):
- *      
- *      Copyright 2005, Linus Torvalds
- *
- *  This program is free software; you can redistribute it and/or
- *  modify it under the terms of the GNU General Public License
- *  version 2 as published by the Free Software Foundation.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with this program; if not, see <http://www.gnu.org/licenses/>.
- *
- **************************************************************************
- *
- *  The purpose of this file is to be compiled into an executable
- *  called `write-tree`. When `write-tree` is run from the command line
- *  it does not take any command line arguments.
- *
- *  The `write-tree` command takes the changes that have been staged in
- *  the index and creates a tree object in the object store recording
- *  these changes.
- *
- *  Everything in the main function in this file will run
- *  when ./write-tree executable is run from the command line.
- */
+ *除非明确说明，否则所有文档(备注)：**版权所有2018，AnalytixBar LLC，Jacob Stopak**所有代码和明确标记的文档(注释)：**版权所有2005年，Linus Torvalds**这个程序是自由软件；您可以重新分发它和/或*根据GNU通用公共许可证的条款进行修改*自由软件基金会发布的版本2。**这个程序的分发是希望它能有用，*但没有任何保证；甚至没有*适销性或对某一特定目的的适用性。请参阅*GNU通用公共许可证，了解更多详细信息。**您应已收到GNU通用公共许可证的副本*与这项计划一起；如果不是，请参阅&lt;http://www.gnu.org/licenses/&gt;.*****************************************************************************此文件的目的是编译成可执行文件*称为`WRITE-TREE`。当从命令行运行`WRITE-Tree`时*它不需要任何命令行参数。**`write-tree`命令接受已在中暂存的更改*索引，并在对象存储记录中创建树对象*这些变化。**此文件中Main函数中的所有内容都将运行*当./WRITE-TREE可执行文件从命令行运行时。
+*/ 
 
 #include "cache.h"
-/* The above 'include' allows use of the following functions and
-   variables from "cache.h" header file, ranked in order of first use
-   in this file. Most are functions/macros from standard C libraries
-   that are `#included` in "cache.h". Function names are followed by
-   parenthesis whereas variable/struct names are not:
-
-   -sha1_file_name(): Build the path of an object in the object database
-                      using the object's SHA1 hash value.
-
-   -access(path, amode): Check whether the file at `path` can be accessed
-                         according to the permissions specified in `amode`.
-
-   -perror(message): Write `message` to standard error output stream. Sourced
-                     from <stdio.h>.
-
-   -read_cache(): Read the contents of the `.dircache/index` file into the
-                  `active_cache` array. The number of caches entries is 
-                  returned.
-
-   -fprintf(stream, message, ...): Write `message` to the output `stream`. 
-                                   Sourced from <stdio.h>.
-
-   -exit(status): Stop execution of the program and exit with code `status`.
-                  Sourced from <stdlib.h>.
-
-   -malloc(size): Allocate unused space for an object whose size in bytes is 
-                  specified by `size` and whose value is unspecified. Sourced 
-                  from <stdlib.h>.
-
-   -alloc_nr(x): This is a macro in "cache.h" that's used to calculate the
-                 maximum number of elements to allocate to the active_cache 
-                 array.
-
-   -realloc(pointer, size): Update the size of the memory object pointed to by
-                            `pointer` to `size`. Sourced from <stdlib.h>.
-
-   -sprintf(s, message, ...): Writes `message` string constant to string 
-                              variable `s` followed by the null character 
-                              '\0'. Sourced from <stdio.h>.
-
-   -memcpy(s1, s2, n): Copy n bytes from the object pointed to by s2 into the 
-                       object pointed to by s1.
-
-   -write_sha1_file(): Deflate an object, calculate the hash value, then call
-                       the write_sha1_buffer function to write the deflated
-                       object to the object database.
-
-   ****************************************************************
-
-   The following variables and functions are defined in this source file.
-
-   -main(): The main function runs each time the ./write-tree command is run.
-
-   -check_valid_sha1(): Check if user-supplied SHA1 hash corresponds to an
-                        object in the object database.
-
-   -prpend_integer(): Prepend a string containing the decimal form of the size 
-                      of the tree data in bytes to the buffer.
-
-   -ORIG_OFFSET: Token that defines the number of bytes at the beginning of 
-                 the buffer that are allocated for the object tag and the 
-                 object data size.
-*/
+/*
+ 上面的‘Include’允许使用以下函数和“cache.h”头文件中的变量，按第一次使用的顺序排序在这份文件中。大多数是标准C库中的函数/宏它们是“cache.h”中的`#includded`。函数名后面跟有圆括号，而变量/结构名称不是：-sha1_file_name()：在对象库中构建对象的路径使用对象的SHA1哈希值。-Access(Path，Amode)：检查`path`处的文件是否可以访问根据`amode`中指定的权限。-perror(Message)：将`Message`写入标准错误输出流。来源：来自&lt;stdio.h&gt;。-READ_CACHE()：将`.dircache/index`文件的内容读入`active_cache`数组。缓存条目的数量为回来了。-fprint tf(stream，Message，...)：将`Message`写入输出`stream`。来源：&lt;stdio.h&gt;。-Exit(Status)：停止程序执行，退出，代码为`status`。来源：&lt;stdlib.h&gt;。-Malloc(Size)：为大小为字节数的对象分配未使用的空间由`size`指定，其值未指定。来源：来自&lt;stdlib.h&gt;。-alloc_nr(X)：这是“cache.h”中的一个宏，用于计算分配给ACTIVE_CACHE的最大元素数数组。-realloc(指针，大小)：更新所指向的内存对象的大小`pointer`到`size`。来源：&lt;stdlib.h&gt;。-print intf(s，Message，...)：将`Message`字符串常量写入字符串变量`s`，后跟空字符‘\0’。来源：&lt;stdio.h&gt;。-Memcpy(s1，s2，n)：将s2指向的对象中的n个字节复制到由S1指向的对象。-WRITE_SHA1_FILE()：放空对象，计算哈希值，然后打电话给WRITE_SHA1_BUFFER函数用于写入泄气的对象添加到对象数据库。****************************************************************下列变量和函数在中定义。这个源文件。-main()：Main函数在每次运行./WRITE-TREE命令时运行。-CHECK_VALID_SHA1()：检查用户提供的SHA1散列是否与对象数据库中的。-prpend_INTEGER()：添加包含大小的小数形式的字符串以字节为单位的树数据发送到缓冲区。-原创_。偏移量：定义为对象标记分配的缓冲区和对象数据大小。
+*/ 
 
 /*
- * Function: `check_valid_sha1`
- * Parameters:
- *      -sha1: An SHA1 hash to check.
- * Purpose: Check if user-supplied SHA1 hash corresponds to an object in the 
- *          object database and if the process has read access to it.
- */
+ *函数：`check_valid_sha1`*参数：*-sha1：要检查的sha1哈希。*目的：检查用户提供的SHA1散列是否与*对象数据库，以及进程是否对其具有读取访问权限。
+*/ 
 static int check_valid_sha1(unsigned char *sha1)
 {
     /*
-     * Build the path of an object in the object database using the object's 
-     * SHA1 hash value.
-     */
+ *使用对象的在对象数据库中构建对象的路径*SHA1哈希值。
+*/ 
     char *filename = sha1_file_name(sha1);
-    int ret;   /* Return code. */
+    int ret;   /*
+ 返回代码。
+*/ 
 
     /*
-     * Check whether the process has read access to the object in the object 
-     * database. 
-     */
+ *检查进程是否对对象中的对象有读访问权限*数据库。
+*/ 
     ret = access(filename, R_OK);
 
-    /* Error if the file is not accessible. */
+    /*
+ 如果文件不可访问，则出错。
+*/ 
     if (ret)
         perror(filename);
 
@@ -128,153 +36,155 @@ static int check_valid_sha1(unsigned char *sha1)
 }
 
 /*
- * Function: `prepend_integer`
- * Parameters:
- *      -buffer: Pointer to buffer that holds the tree data.
- *      -val: Size in bytes of the tree data.
- *      -i: Number of bytes at the beginning of `buffer` that are allocated 
- *          for the object tag and object data size.
- * Purpose: Prepend a string containing the decimal form of the size of the 
- *          tree data in bytes to the buffer.
- */
+ *函数：`Prepend_Integer`*参数：*-Buffer：指向保存的缓冲区的指针
+*/ 
 static int prepend_integer(char *buffer, unsigned val, int i)
 {
-    /* Prepend a null character to the tree data in the buffer. */
+    /*
+ 在缓冲区中的树数据前附加一个空字符。
+*/ 
     buffer[--i] = '\0';
 
     /*
-     * Prepend a string containing the decimal form of the size of the tree 
-     * data in bytes before the null character.
-     */
+ *添加一个包含树大小小数形式的字符串*空字符之前的以字节为单位的数据。
+*/ 
     do {
         buffer[--i] = '0' + (val % 10);
         val /= 10;
     } while (val);
     /*
-     * The value of `i` is now the index of the buffer element that contains 
-     * the most significant digit of the decimal form of the tree data size.
-     */
+ *`i`的值现在是包含的缓冲区元素的索引*树数据大小的小数形式的最高有效位。
+*/ 
     return i;
 }
 
-/* Linus Torvalds: Enough space to add the header of "tree <size>\0" */
+/*
+ Linus Torvalds：有足够的空间添加“tree&lt;Size&gt;\0”的标题。
+*/ 
 #define ORIG_OFFSET (40)
 
 /*
- * Function: `main`
- * Parameters:
- *      -argc: The number of command-line arguments supplied, inluding the 
- *             command itself. 
- *      -argv: An array of the command line arguments, including the command 
- *             itself.
- * Purpose: Standard `main` function definition. Runs when the executable 
- *          `write-tree` is run from the command line. 
- */
+ *功能：`main`*参数：*-argc：提供的命令行参数的数量，包括*命令本身。*-argv：命令行参数的数组，包括命令*本身。*用途：标准`main`函数定义。运行时，可执行文件*`WRITE-Tree`从命令行运行。
+*/ 
 int main(int argc, char **argv)
 {
-    /* The size to be allocated to the buffer. */
+    /*
+ 要分配给缓冲区的大小。
+*/ 
     unsigned long size;
-    /* Index of the buffer element to be filled next. */
+    /*
+ 接下来要填充的缓冲区元素的索引。
+*/ 
     unsigned long offset;
-    /* Not used. Even Linus Torvalds makes mistakes. */
+    /*
+ 没有用过。即使是莱纳斯·托瓦尔兹也会犯错。
+*/ 
     unsigned long val;
-    /* Iterator used in for loop. */
+    /*
+ For循环中使用的迭代器。
+*/ 
     int i;
     /*
-     * Read in the contents of the `.dircache/index` file into the 
-     * `active_cache` array. The number of cache entries is returned and 
-     * stored in `entries`.
-     */
+ *将`.dircache/index`文件的内容读入*`active_cache`数组。返回缓存条目的数量，并且*存储在`条目`中。
+*/ 
     int entries = read_cache();
 
-    /* String to hold the tree's content. */
+    /*
+ 用于保存树内容的字符串。
+*/ 
     char *buffer;
 
     /*
-     * If there are no active cache entries or if there was an error reading
-     * the cache, display an error message and exit since there is nothing to 
-     * write to a tree.
-     */
+ *如果没有活动的缓存条目或读取错误*缓存，显示一条错误消息并退出，因为没有什么可以*写信给一棵树。
+*/ 
     if (entries <= 0) {
         fprintf(stderr, "No file-cache to create a tree of\n");
         exit(1);
     }
 
-    /* Linus Torvalds: Guess at an initial size */
+    /*
+ 莱纳斯·托瓦尔兹：猜测初始尺寸。
+*/ 
     size = entries * 40 + 400;
-    /* Allocate `size` bytes to buffer to store the tree content. */
+    /*
+ 为缓存分配`size`字节，用于存储树内容。
+*/ 
     buffer = malloc(size);
     /*
-     * Set the offset index using the macro defined in this file. The tree
-     * data will be written starting at this offset.  The tree metadata will
-     * be written before it.
-     */
+ *使用此文件中定义的宏来设置偏移量索引。那棵树*数据将从该偏移量开始写入。树元数据将*写在它之前。
+*/ 
     offset = ORIG_OFFSET;
 
     /*
-     * Loop over each cache entry and build the tree object by adding the 
-     * data from the cache entry to the buffer.
-     */
+ *循环遍历每个缓存条目并通过添加*从缓存条目到缓冲区的数据。
+*/ 
     for (i = 0; i < entries; i++) {
-        /* Pick out the ith cache entry from the active_cache array. */
+        /*
+ 从ACTIVE_CACHE数组中选择第i个缓存条目。
+*/ 
         struct cache_entry *ce = active_cache[i];
 
-        /* Check if the cache entry's SHA1 hash is valid. Otherwise, exit. */
+        /*
+ 检查缓存条目的SHA1散列是否有效。否则，退出。
+*/ 
         if (check_valid_sha1(ce->sha1) < 0)
             exit(1);
 
-        /* If needed, increase the size of the buffer. */
+        /*
+ 如果需要，增加缓冲区的大小。
+*/ 
         if (offset + ce->namelen + 60 > size) {
             size = alloc_nr(offset + ce->namelen + 60);
             buffer = realloc(buffer, size);
         }
 
         /*
-         * Write the cache entry's file mode and name to the buffer and
-         * increment `offset` by the number of characters that were written.
-         */
+ *将缓存条目的文件模式和名称写入缓冲区，并*按写入的字符数递增`offset`。
+*/ 
         offset += sprintf(buffer + offset, "%o %s", ce->st_mode, ce->name);
 
         /*
-         * Write a null character to the buffer as a separator and increment
-         * `offset`. 
-         */
+ *将空字符作为分隔符和增量写入缓冲区*`Offset`。
+*/ 
         buffer[offset++] = 0;
 
-        /* Add the cache entry's SHA1 hash to the buffer. */
+        /*
+ 将缓存条目的SHA1散列添加到缓冲区。
+*/ 
         memcpy(buffer + offset, ce->sha1, 20);
 
         /*
-         * Increment the offset by 20 bytes, the length of an SHA1 hash.
-         */
+ *将偏移量增加20个字节，即SHA1散列的长度。
+*/ 
         offset += 20;
     }
 
     /*
-     * Prepend a string containing the decimal form of the size of the tree 
-     * data in bytes to the buffer.
-     */
+ *添加一个包含树大小小数形式的字符串*以字节为单位的数据存储到缓冲区。
+*/ 
     i = prepend_integer(buffer, offset - ORIG_OFFSET, ORIG_OFFSET);
     /*
-     * Prepend the string `tree ` to the buffer to identify this object as a 
-     * tree in the object store.
-     */
+ *将字符串`tree`添加到缓冲区，以将此对象标识为*对象存储中的树。
+*/ 
     i -= 5;
     memcpy(buffer+i, "tree ", 5);
 
     /*
-     * Adjust buffer to start at the first character of the `tree` object 
-     * tag. 
-     */
+ *调整缓冲区，从`tree`对象的第一个字符开始*标签。
+*/ 
     buffer += i;
-    /* Calculate final total size of this buffer. */
+    /*
+ 计算此缓冲区的最终总大小。
+*/ 
     offset -= i;
 
-    /* Compress the contents of buffer, calculate SHA1 hash of compressed 
-     * output, and write the tree object to the object store. 
-     */
+    /*
+ 压缩缓冲区内容，计算压缩后的SHA1哈希值*输出，并将树对象写入对象存储。
+*/ 
     write_sha1_file(buffer, offset);
 
-    /* Return success. */
+    /*
+ 回报成功。
+*/ 
     return 0;
 }

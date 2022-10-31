@@ -1,468 +1,256 @@
+// THIS_SOURCES_HAS_BEEN_TRANSLATED 
  /*
- *  All documentation (comments) unless explicitly noted:
- *
- *      Copyright 2018, AnalytixBar LLC, Jacob Stopak
- *
- *  All code & explicitly labelled documentation (comments):
- *      
- *      Copyright 2005, Linus Torvalds
- *
- *  This program is free software; you can redistribute it and/or
- *  modify it under the terms of the GNU General Public License
- *  version 2 as published by the Free Software Foundation.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with this program; if not, see <http://www.gnu.org/licenses/>.
- *
- **************************************************************************
- *
- *  The purpose of this file is to be compiled is to define helper functions
- *  that the other files in the codebase use to interact with the object store
- *  and the index. This includes helper functions for reading and writing from
- *  the object store and index and validating existing cache_entries.
- */
+ *除非明确说明，否则所有文档(备注)：**版权所有2018，AnalytixBar LLC，Jacob Stopak**所有代码和明确标记的文档(注释)：**版权所有2005年，Linus Torvalds**这个程序是自由软件；您可以重新分发它和/或*根据GNU通用公共许可证的条款进行修改*自由软件基金会发布的版本2。**这个程序的分发是希望它能有用，*但没有任何保证；甚至没有*适销性或对某一特定目的的适用性。请参阅*GNU通用公共许可证，了解更多详细信息。**您应已收到GNU通用公共许可证的副本*与这项计划一起；如果不是，请参阅&lt;http://www.gnu.org/licenses/&gt;.*****************************************************************************编译此文件的目的是定义帮助器函数*议决。代码库中的其他文件用于与对象存储交互*和指数。这包括用于读取和写入的助手函数*对象存储和索引以及验证现有的CACHE_ENTRIES。
+*/ 
 #include "cache.h"
-/* The above 'include' allows use of the following functions and
-   variables from "cache.h" header file, ranked in order of first use
-   in this file. Most are functions/macros from standard C libraries
-   that are `#included` in "cache.h". Function names are followed by
-   parenthesis whereas variable/struct names are not:
+/*
+ 上面的‘Include’允许使用以下函数和“cache.h”头文件中的变量，按第一次使用的顺序排序在这份文件中。大多数是标准C库中的函数/宏它们是“cache.h”中的`#includded`。函数名后面跟有圆括号，而变量/结构名称不是：-MemcMP(str1，str2，n)：将str1的前n个字节与str2进行比较并返回大于、等于或小于0的整数，如果由str1指向的对象大于，等于或小于由指向的对象Str2，分别进行了分析。来源：&lt;string.h&gt;。-active_nr：活动缓存/索引中的条目数。-CACHE_ENTRY：表示单个缓存/暂存文件的结构。-ACTIVE_CACHE：表示活动缓存/索引的数组。-sizeof(数据类型)：给出需要存储的字节数的运算符数据类型或变量。-z_stream：通用压缩/解压缩流。来源：&lt;zlib.h&gt;。-Malloc(Size)：为大小为字节数的对象分配未使用的空间由`size`指定，其值未指定。来源：来自&lt;stdlib.h&gt;。-mmap(addr，len，prot，标志，FILE_DESCRIPTOR，Offset)：建立进程地址空间与文件之间的映射，共享内存对象或类型化内存对象。来源：&lt;sys/mman.h&gt;。-prot_read：mmap()函数的`prot`参数的标志，描述映射所需的内存保护。`PROT_READ`指示可以读取页面。来源：&lt;sys/mman.h&gt;。-map_Private：mmap()函数的`prot`参数的标志，描述映射所需的内存保护。`MAP_PRIVATE`指示对映射数据的更改是调用过程，并且不应更改基础对象。来源：&lt;sys/mman.h&gt;。-SHA_CTX：SHA上下文结构，用于存储对内容进行散列的过程。来源：&lt;openssl/sha.h&gt;。-Close(Fd)：释放文件描述符`fd`。文件描述符`fd`将可供后续调用Open()或其他分配`fd`的函数调用。删除拥有的所有锁`fd`关联的文件上的进程。来源：&lt;unistd.h&gt;。-Memset(void*s，int c，ize_t n)：拷贝`c`(转换为无符号的Char)转换为前几个`N‘字节由`s`指向的对象的。-deflateInit(z_stream，Level)：初始化内部`Z_Stream`状态对于`Level`的压缩，表示上速度变化率压缩的比例范围从0到9。来源&lt;zlib.h&gt;。-deducateBound(z_stream，SourceLen)：返回通货紧缩后的压缩大小`SourceLen`字节。-inflateInit(Z_Stream)：初始化的内部`Z_Stream`状态解压。来源&lt;zlib.h&gt;。-Z_BEST_COMPRESSION：转换为压缩级别9，作为输入如果设置为`apreateInit()`，则表示优化压缩按操作调整大小
+*/ 
 
-   -memcmp(str1, str2, n): Compare first n bytes of str1 to str2 and return an 
-                           integer greater than, equal to, or less than 0, if 
-                           the object pointed to by str1 is greater than, 
-                           equal to, or less than the object pointed to by 
-                           str2, respectively. Sourced from <string.h>.
-
-   -active_nr: The number of entries in the active cache/index.
-
-   -cache_entry: Structure representing a single cached/staged file.
-
-   -active_cache: Array representing the active cache/index.
-
-   -sizeof(datatype): Operator that gives the number of bytes needed to store 
-                      a datatype or variable. 
-
-   -z_stream: General-purpose compression/decompression stream. Sourced from
-              <zlib.h>.
-
-   -malloc(size): Allocate unused space for an object whose size in bytes is 
-                  specified by `size` and whose value is unspecified. Sourced 
-                  from <stdlib.h>.
-
-   -mmap(addr, len, prot, flags, file_descriptor, offset): 
-        Establish a mapping between a process' address space and a file, 
-        shared memory object, or typed memory object. Sourced from 
-        <sys/mman.h>.
-
-   -PROT_READ: Flag for the mmap() function's `prot` parameter describing
-               the desired memory protection of the mapping. `PROT_READ`
-               indicates that pages may be read. Sourced from <sys/mman.h>.
-                
-   -MAP_PRIVATE: Flag for the mmap() function's `prot` parameter describing
-                 the desired memory protection of the mapping. `MAP_PRIVATE`
-                 indicates that changes to the mapped data are private to the
-                 calling process and should not change the underlying object.
-                 Sourced from <sys/mman.h>.
-
-   -SHA_CTX: SHA context structure used to store information related to the
-             process of hashing the content. Sourced from <openssl/sha.h>.
-
-   -close(fd): Deallocate the file descriptor `fd`. The file descriptor `fd` 
-               will be made available to subsequent calls to open() or other 
-               function calls that allocate `fd`. Remove all locks owned by 
-               the process on the file associated with `fd`. Sourced from
-               <unistd.h>.
-
-   -memset(void *s, int c, size_t n): Copies `c` (converted to an unsigned
-                                      char) into each of the first `n` bytes
-                                      of the object pointed to by `s`.
-
-   -deflateInit(z_stream, level): Initializes the internal `z_stream` state
-                                  for compression at `level`, which indicates
-                                  scale of speed versuss compression on a 
-                                  scale from 0-9. Sourced from <zlib.h>.
-
-   -deflateBound(z_stream, sourceLen): Returns an upper bound on the 
-                                       compressed size after deflation of 
-                                       `sourceLen` bytes.
-
-   -inflateInit(z_stream): Initializes the internal `z_stream` state for
-                           decompression. Sourced from <zlib.h>.
-
-   -Z_BEST_COMPRESSION: Translates to compression level 9, which, as an input 
-                        to `deflateInit()`, indicates optimizing compression
-                        size as opposed to compression speed. Sourced from
-                        <zlib.h>.
-
-   -deflate(z_stream, flush): Compresses as much data as possible and stops
-                              when the input buffer becomes empty or the
-                              output buffer becomes full. Sourced from 
-                              <zlib.h>.
-
-   -inflate(z_stream, flush): Decompresses as much data as possible and stops
-                              when the input buffer becomes empty or the
-                              output buffer becomes full. Sourced from 
-                              <zlib.h>.
-
-   -Z_OK: Successful zlib return code. It is equal to 0. Sourced from 
-          <zlib.h>.
-
-   -Z_FINISH: Flush value for zlib that specifies processing of remaining 
-              input. It is equal to 4. Sourced from <zlib.h>.
-
-   -deflateEnd(z_stream): All dynamically allocated data structures for
-                          `z_stream` are freed. Sourced from <zlib.h>.
-
-   -SHA1_Init(): Initializes a SHA_CTX structure. Sourced from 
-                 <openssl/sha.h>. 
-
-   -SHA1_Update(SHA_CTX *c, const void *data, size_t len): 
-        Can be called repeatedly to calculate the hash value of chunks of data 
-        (len bytes from data). Sourced from <openssl/sha.h>.
-
-   -SHA1_Final(unsigned char *md, SHA_CTX *c): 
-        Places the message digest in md, which must have space for 20 bytes of 
-        output, and erases the `c` SHA_CTX structure. Sourced from 
-        <openssl/sha.h>.
-
-   -stat: Structure pointer used by stat() function to store information
-          related to a filesystem file. Sourced from <sys/stat.h>.
-
-   -open(path, flags, perms): Open file in `path` for reading and/or writing 
-                              as specified in `flags` and return a file 
-                              descriptor that refers to the open file
-                              description. If the file does not exist, it is
-                              created with the permssions in `perms`. Sourced 
-                              from <fcntl.h>.
-
-   -O_RDONLY: Flag for the open() function indicating to open the file for
-              reading only. Sourced from <fcntl.h>.
-
-   -ENOENT: Failure code set as errno by the open() function when O_CREAT is 
-            not set and the named file does not exist; or O_CREAT is set and 
-            either the path prefix does not exist or the path argument points 
-            to an empty string. Sourced from <fcntl.h>.
-
-   -fstat(fd, buf): Obtain information about an open file associated with the 
-                    file descriptor `fd` and write it to the area pointed to 
-                    by `buf`, which is a pointer to a `stat` structure. 
-                    Sourced from <sys/stat.h>.
-
-   -strlen(string): Return the length of `string` in bytes.
-
-   -memcpy(s1, s2, n): Copy n bytes from the object pointed to by s2 into the 
-                       object pointed to by s1.
-
-   -cache_header: Structure representing header information for the cache.
-                  Sourced from "cache.h".
-
-   -CACHE_SIGNATURE: #Defined as `0x44495243`. Sourced from "cache.h".
-
-   -offsetof(type, member): Macro that expands to an integral constant 
-                            expression of type std::size_t, the value of which 
-                            is the offset, in bytes, from the beginning of an 
-                            object of specified type to its specified member, 
-                            including padding if any. Sourced from <stddef.h>.
-
-   -perror(message): Write `message` to standard error stream. Sourced from 
-                     <stdio.h>.
-
-   -O_CREAT: Flag for the open() function. If the file exists, this flag has 
-             no effect except as noted under O_EXCL below. Otherwise, the file 
-             shall be created. Sourced from <fcntl.h>.
-
-   -O_EXCL: Flag for the open() function. If O_CREAT and O_EXCL are set, 
-            open() shall fail if the file exists.
-
-   -fprintf(stream, message, ...): Write `message` to the output `stream`.
-                                   Sourced from <stdio.h>.
-    
-   -sscanf(string, format, args): Read input from `string` into `args` using 
-                                  input format `format`. Sourced from 
-                                  <stdio.h>.
-
-   ****************************************************************
-
-   The following variables are external variables defined in this source file:
-
-   -sha1_file_directory: The path to the object store.
-
-   -active_cache: An array of pointers to cache entries representing the 
-                  current set of content that will be cached to file or that
-                  has been retrieved from the cache file. 
-
-   -active_nr: The number of cache entries in the active_cache array.
-
-   -active_alloc: The maximum number of elements the active_cache array can 
-                  hold. 
-
-   ****************************************************************
-
-   The following variables and functions are defined in this source file:
-
-   -usage(): Print an error message and exit.
-
-   -hexval(): Convert a hexadecimal symbol to its decimal equivalent.
-
-   -get_sha1_hex(): Convert a 40-character hexadecimal representation of an 
-                    SHA1 hash value to the equivalent 20-byte representation.
-
-   -sha1_to_hex(): Convert a 20-byte representation of an SHA1 hash value to 
-                   the equivalent 40-character hexadecimal representation.
-
-   -sha1_file_name(): Build the path of an object in the object database
-                      using the object's SHA1 hash value.
-
-   -read_sha1_file(): Locate an object in the object database, read and 
-                      inflate it, then return the inflated object data 
-                      (without the prepended metadata).
-
-   -write_sha1_file(): Deflate an object, calculate the hash value, then call
-                       the write_sha1_buffer function to write the deflated
-                       object to the object database.
-
-   -write_sha1_buffer(): Write an object to the object database, using the
-                         object's SHA1 hash value as index.
-
-   -error(): Print an error message to standard error stream and return -1.
-
-   -verify_hdr(): Validate a cache header.
-
-   -read_cache(): Reads the cache entries in the `.dircache/index` file into 
-                  the `active_cache` array.
-*/
-
-/* Used to store the path to the object store. */
+/*
+ 用于存储对象存储区的路径。
+*/ 
 const char *sha1_file_directory = NULL; 
 /*
- * An array of pointers to cache entries representing the current set of 
- * content that will be cached to file or that has been retrieved from the 
- * cache file. 
- */
+ *一个指针数组，指向表示当前*将缓存到文件或已从*缓存文件。
+*/ 
 struct cache_entry **active_cache = NULL; 
-/* The number of cache entries in the active_cache array. */
+/*
+ ACTIVE_CACHE数组中的缓存条目数。
+*/ 
 unsigned int active_nr = 0; 
-/* The maximum number of elements the active_cache array can hold. */
+/*
+ ACTIVE_CACHE数组可以容纳的最大元素数。
+*/ 
 unsigned int active_alloc = 0; 
 
 /*
- * Function: `usage`
- * Parameters:
- *      -err: Error message to display.
- * Purpose: Display an error message and exit.
- */
+ *函数：`usage`*参数：*-Err：要显示的错误消息。*用途：显示错误消息并退出。
+*/ 
 void usage(const char *err)
 {
     fprintf(stderr, "read-tree: %s\n", err);
     exit(1);
 }
 
-/* Function: `hexval`
- * Parameters:
- *      -c: Hexadecimal character to convert to decimal.
- * Purpose: Convert a hexadecimal symbol to its decimal equivalent.
- */
+/*
+ 函数：`66val`*参数：*-c：要转换为十进制的十六进制字符。*用途：将十六进制符号转换为等价的十进制符号。
+*/ 
 static unsigned hexval(char c)
 {
-    /* If the character is 0-9, return it converted to an integer 0-9. */
+    /*
+ 如果字符是0-9，则返回转换为0-9的整数。
+*/ 
     if (c >= '0' && c <= '9')
         return c - '0';
 
-    /* If the character is a-f, return it converted to an integer 10-15. */
+    /*
+ 如果字符是a-f，则返回转换为10-15的整数。
+*/ 
     if (c >= 'a' && c <= 'f')
         return c - 'a' + 10;
 
-    /* If the character is A-F, return it converted to an integer 10-15. */
+    /*
+ 如果字符是A-F，则返回转换为10-15的整数。
+*/ 
     if (c >= 'A' && c <= 'F')
         return c - 'A' + 10;
 
     /*
-     * If `c` is not a valid hexadecimal symbol, return the one's complement 
-     * of 0. 
-     */
+ *如果`c`不是有效的十六进制符号，则返回一的补码*共0。
+*/ 
     return ~0;
 }
 
 /*
- * Function: `get_sha1_hex`
- * Parameters:
- *      -hex: String containing the hexadecimal representation of an SHA1 hash 
-              value.
- *      -sha1: Array for storing the 20-byte representation of the SHA1 hash
- *             value.
- * Purpose: Convert a 40-character hexadecimal representation of an SHA1 hash 
- *          value to the equivalent 20-byte representation.
- */
+ *函数：`Get_sha1_he`*参数：*-hex：包含SHA1散列的十六进制表示形式的字符串价值。*-sha1：用于存储sha1散列的20字节表示形式的数组*价值。*用途：转换SHA1散列的40个字符的十六进制表示*值设置为等效的20字节表示形式。
+*/ 
 int get_sha1_hex(char *hex, unsigned char *sha1)
 {
     int i;
     /*
-     * Convert each two-digit hexadecimal number (ranging from 00 to ff) to a 
-     * decimal number (ranging from 0 to 255). 
-     */
+ *将每个两位十六进制数(从00到ff)转换为*十进制数(范围从0到255)。
+*/ 
     for (i = 0; i < 20; i++) {
         /*
-         * The decimal equivalent of the first hexadecimal digit will form 
-         * the 4 high bits of val; that of the second hex digit will form the 
-         * 4 low bits.
-         */
+ *第一个十六进制数字的十进制等价物将形成*val的4个高位；第二个十六进制数字的高位将形成*4个低位。
+*/ 
         unsigned int val = (hexval(hex[0]) << 4) | hexval(hex[1]);
-        /* Return -1 if val is larger than 255. */
+        /*
+ 如果val大于255，则返回-1。
+*/ 
         if (val & ~0xff)
             return -1;
-        *sha1++ = val;   /* Store val in sha1 array. */
-        hex += 2;        /* Get next two-digit hexadecimal number. */
+        *sha1++ = val;   /*
+ 将val存储在SHA1数组中。
+*/ 
+        hex += 2;        /*
+ 获取下一个两位十六进制数。
+*/ 
     }
     return 0;
 }
 
 /*
- * Function: `sha1_to_hex`
- * Parameters:
- *      -sha1: Array containing 20-byte representation of an SHA1 hash value.
- * Purpose: Convert a 20-byte representation of an SHA1 hash value to the
- *          equivalent 40-character hexadecimal representation.
- */
+ *函数：`sha1_to_he`*参数：*-sha1：包含SHA1散列值的20字节表示形式的数组。*目的：将SHA1哈希值的20字节表示形式转换为*相当于40个字符的十六进制表示法。
+*/ 
 char *sha1_to_hex(unsigned char *sha1)
 {
-    /* String for storing the 40-character hexadecimal representation. */
+    /*
+ 用于存储40个字符的十六进制表示形式的字符串。
+*/ 
     static char buffer[50];
     /*
-     * Lookup array for getting the hexadecimal representation of a number
-     * from 0 to 15. 
-     */
+ *用于获取数字的十六进制表示形式的查找数组*从0到15。
+*/ 
     static const char hex[] = "0123456789abcdef";
-    /* Pointer used for filling up the buffer string. */
+    /*
+ 用于填充缓冲区字符串的指针。
+*/ 
     char *buf = buffer;
     int i;
 
     /*
-     * Get the two-digit hexadecimal representation (ranging from 00 to ff) of
-     * a number (ranging from 0 to 255).
-     */
+ *获取的两位十六进制表示法(范围从00到ff)*一个数字(从0到255)。
+*/ 
     for (i = 0; i < 20; i++) {
-        unsigned int val = *sha1++;   /* Get the current number. */
-        *buf++ = hex[val >> 4];       /* Convert the 4 high bits to hex. */
-        *buf++ = hex[val & 0xf];      /* Convert the 4 low bits to hex. */
+        unsigned int val = *sha1++;   /*
+ 获取当前号码。
+*/ 
+        *buf++ = hex[val >> 4];       /*
+ 将4位高位转换为十六进制。
+*/ 
+        *buf++ = hex[val & 0xf];      /*
+ 将4位低位转换为十六进制。
+*/ 
     }
-    return buffer;   /* Return the hexadecimal representation. */
+    return buffer;   /*
+ 返回十六进制表示形式。
+*/ 
 }
 
 /*
- * Linus Torvalds: NOTE! This returns a statically allocated buffer, so you 
- * have to be careful about using it. Do a "strdup()" if you need to save the
- * filename.
- */
+ *莱纳斯·托瓦尔兹：注意！这将返回一个静态分配的缓冲区，因此您*使用时必须小心。如果需要保存文件，请执行“strdup()*文件名。
+*/ 
 
 /*
- * Function: `sha1_file_name`
- * Parameters:
- *      -sha1: The SHA1 hash value used to identify the object in the object 
- *             store.
- * Purpose: Build the path of an object in the object database using the 
- *          object's SHA1 hash value.
- */
+ *函数：`sha1_file_name`*参数：*-sha1：用于标识对象中的对象的sha1哈希值*商店。*用途：在对象数据库中使用*对象的SHA1哈希值。
+*/ 
 char *sha1_file_name(unsigned char *sha1)
 {
     int i;
-    /* `base` is a character array for storing the path to an object in the
-     * object database. `name` is a pointer to the byte in `base` that is
-     * after the object database path plus `/`.
-     */
+    /*
+ `base‘是一个字符数组，用于存储*对象数据库。`name`是指向`base`中的字节的指针，即*对象数据库路径后加`/`。
+*/ 
     static char *name, *base;
 
-    /* If base has not been set. */
+    /*
+ 如果尚未设置基数，则返回。
+*/ 
     if (!base) {
-        /* Get the path to the object database. */
+        /*
+ 获取对象数据库的路径。
+*/ 
         char *sha1_file_directory 
                  = getenv(DB_ENVIRONMENT) ? : DEFAULT_DB_ENVIRONMENT;
-        /* The length of the path. */
+        /*
+ 路径的长度。
+*/ 
         int len = strlen(sha1_file_directory);
-        /* Allocate space for the base string. */
+        /*
+ 为基本字符串分配空间。
+*/ 
         base = malloc(len + 60);
-        /* Copy the object database path to the base string. */
+        /*
+ 将对象数据库路径复制到基本字符串。
+*/ 
         memcpy(base, sha1_file_directory, len);
-        /* Initialize the rest of the base string to contain null bytes. */
+        /*
+ 将基本字符串的其余部分初始化为包含空字节。
+*/ 
         memset(base+len, 0, 60);
-        /* Write a slash after the sha1_file_directory path. */
+        /*
+ 在SHA1_FILE_DIRECTORY路径后面写一个斜杠。
+*/ 
         base[len] = '/';
         /*
-         * Write a slash to separate the two-character object directory from
-         * the object filename.
-         */
+ *写一个斜杠将两个字符的对象目录与*对象文件名。
+*/ 
         base[len+3] = '/';
-        /* Set name to point to the byte after the first slash above. */
+        /*
+ 将名称设置为指向上面第一个斜杠之后的字节。
+*/ 
         name = base + len + 1;
     }
     /*
-     * Fill in the rest of the object path (object directory and filename)
-     * using the object's SHA1 hash value.
-     *
-     * Convert each number in the sha1 array (ranging from 0 to 255) to a 
-     * two-digit hexadecimal number (ranging from 00 to ff). The first 
-     * two-digit hexadecimal number will form part of the object directory. 
-     * The rest of the two-digit hexadecimal numbers will comprise the object 
-     * filename. 
-     */
+ *填写对象路径的其余部分(对象目录和文件名)*使用对象的SHA1哈希值。**将SHA1数组中的每个数字(范围从0到255)转换为*两位十六进制数(范围从00到ff)。第一*两位十六进制数将构成对象目录的一部分。*其余两位十六进制数将构成对象*文件名。
+*/ 
     for (i = 0; i < 20; i++) {
         /*
-         * Lookup array for getting the hexadecimal representation of a 
-         * number from 0 to 15. 
-         */
+ *查找数组，用于获取*从0到15的数字。
+*/ 
         static char hex[] = "0123456789abcdef";
-        /* Get the current number from sha1. */
+        /*
+ 从SHA1获取当前编号。
+*/ 
         unsigned int val = sha1[i];
         /*
-         * Set the index of the base array. This will be name + 0, name + 3,
-         * name + 5, name + 7,..., name + 39.
-         */
+ *设置基本数组的索引。这将是名称+0，名称+3，*姓名+5，姓名+7，...，姓名+39。
+*/ 
         char *pos = name + i*2 + (i > 0);
-        *pos++ = hex[val >> 4];   /* Convert the 4 high bits to hex. */
-        *pos = hex[val & 0xf];    /* Convert the 4 low bits to hex. */
+        *pos++ = hex[val >> 4];   /*
+ 将4位高位转换为十六进制。
+*/ 
+        *pos = hex[val & 0xf];    /*
+ 将4位低位转换为十六进制。
+*/ 
     }
-    return base;   /* Return the path to the object. */
+    return base;   /*
+ 返回对象的路径。
+*/ 
 }
 
 /*
- * Function: `read_sha1_file`
- * Parameters:
- *      -sha1: SHA1 hash value of an object.
- *      -type: The type of object that was read (blob, tree, or commit).
- *      -size: The size in bytes of the object data.
- * Purpose: Locate an object in the object database, read and inflate it, then 
- *          return the inflated object data (without the prepended metadata).
- */
+ *函数：`READ_SHA1_FILE`*参数：*-sha1：对象的sha1哈希值。*-type：读取的对象类型(BLOB、TREE或COMMIT)。*-SIZE：对象数据的字节大小。*用途：在对象数据库中定位对象，读取并膨胀它，然后*返回膨胀后的Object数据(不带前置的元数据)。
+*/ 
 void *read_sha1_file(unsigned char *sha1, char *type, unsigned long *size)
 {
-    z_stream stream;     /* Declare a zlib z_stream structure. */
-    char buffer[8192];   /* Buffer for zlib inflated output. */
-    struct stat st;      /* `stat` structure for storing file information. */
-    int i;               /* Not used. Even almighty Linux makes mistakes. */
-    int fd;              /* File descriptor to be associated with the */
-                         /* object to be read. */
-    int ret;             /* Return value of inflate command. */
-    int bytes;           /* Used to track sizes of buffer content. */
+    z_stream stream;     /*
+ 声明一个zlib z_stream结构。
+*/ 
+    char buffer[8192];   /*
+ Zlib膨胀输出的缓冲区。
+*/ 
+    struct stat st;      /*
+ 用于存储文件的`stat`结构
+*/ 
+    int i;               /*
+ 
+*/ 
+    int fd;              /*
+ 关联的文件描述符。
+*/ 
+                         /*
+ 要读取的对象。
+*/ 
+    int ret;             /*
+ 充气命令的返回值。
+*/ 
+    int bytes;           /*
+ 用于跟踪缓冲区内容的大小。
+*/ 
     /*
-     * `map` is a pointer to an object's mapped contents. `buf` is a pointer
-     * to inflated object data.
-     */
+ *`map`是指向对象映射内容的指针。`buf`是一个指针*到夸大的对象数据。
+*/ 
     void *map, *buf;
     /*
-     * Build the path of an object in the object database using the object's 
-     * SHA1 hash value.
-     */
+ *使用对象的在对象数据库中构建对象的路径*SHA1哈希值。
+*/ 
     char *filename = sha1_file_name(sha1); 
 
     /*
-     * Open the object in the object store and associate `fd` with it. If the 
-     * returned value is < 0, there was an error reading the file.
-     */
+ *在对象存储中打开对象，并关联`fd`。如果*返回值&lt;0，读取文件时出错。
+*/ 
     #ifndef BGIT_WINDOWS
     fd = open(filename, O_RDONLY );
     #else
@@ -474,18 +262,21 @@ void *read_sha1_file(unsigned char *sha1, char *type, unsigned long *size)
     }
 
     /*
-     * Get the file information and store it in the `st` structure. Release 
-     * the file descriptor if there was an error.
-     */
+ *获取文件信息，存储在`st`结构中。发布*如果出现错误，则为文件描述符。
+*/ 
     if (fstat(fd, &st) < 0) {
         close(fd);
         return NULL;
     }
 
-    /* Map contents of the object to memory. */
+    /*
+ 将对象的内容映射到内存。
+*/ 
     #ifndef BGIT_WINDOWS
     map = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-    if (-1 == (int)(long)map)   /* Return NULL if mmap failed. */
+    if (-1 == (int)(long)map)   /*
+ 如果mmap失败，则返回NULL。
+*/ 
         return NULL;
     #else
     void *fhandle = CreateFileMapping( (HANDLE) _get_osfhandle(fd), NULL, 
@@ -497,169 +288,225 @@ void *read_sha1_file(unsigned char *sha1, char *type, unsigned long *size)
     if (map == (void *) NULL)
         return NULL;
     #endif
-    close(fd);   /* Release the file descriptor. */
+    close(fd);   /*
+ 释放文件描述符。
+*/ 
 
-    /* Initialize the zlib stream to contain null characters. */
+    /*
+ 将zlib流初始化为包含空字符。
+*/ 
     memset(&stream, 0, sizeof(stream));
-    /* Set map as location of the next input to the inflation stream. */
+    /*
+ 将MAP设置为充气流的下一个输入的位置。
+*/ 
     stream.next_in = map; 
-    /* Number of bytes available as input for next inflation. */
+    /*
+ 可用作下一次充气输入的字节数。
+*/ 
     stream.avail_in = st.st_size; 
-    /* Set `buffer` as the location to write the next inflated output. */
+    /*
+ 将`Buffer`设置为写入下一个膨胀输出的位置。
+*/ 
     stream.next_out = buffer; 
-    /* Number of bytes available for storing the next inflated output. */
+    /*
+ 可用于存储下一个膨胀输出的字节数。
+*/ 
     stream.avail_out = sizeof(buffer); 
 
-    /* Initialize the stream for decompression. */
+    /*
+ 初始化流以进行解压缩。
+*/ 
     inflateInit(&stream); 
-    /* Decompress the object contents and store return code in `ret`. */
+    /*
+ 解压对象内容，并将返回码存储在`ret`中。
+*/ 
     ret = inflate(&stream, 0); 
 
     /*
-     * Read the object type and size of the object data from the buffer and
-     * store them in variables type and size, respectively.  Return NULL if 
-     * the two conversions were not successful.
-     */
+ *从缓冲区读取对象数据的对象类型和大小，并*将它们分别存储在类型和大小变量中。如果满足以下条件，则返回NULL*两次转换均未成功。
+*/ 
     if (sscanf(buffer, "%10s %lu", type, size) != 2)
         return NULL;
 
     /*
-     * The size of the buffer up to the first null character, i.e., the size
-     * of the prepended metadata plus the terminating null character.
-     */
+ *缓冲区大小，直到第一个空字符，即大小前置的元数据加上终止空字符的*。
+*/ 
     bytes = strlen(buffer) + 1; 
-    /* Allocate space to `buf` that's equal to the object data size. */
+    /*
+ 为`buf`分配空间，等于对象数据大小。
+*/ 
     buf = malloc(*size); 
-    /* Error if space could not be allocated. */
+    /*
+ 如果无法分配空间，则出错。
+*/ 
     if (!buf)
         return NULL;
 
     /*
-     * Copy the inflated object data from buffer to buf, i.e, without the 
-     * prepended metadata (the object type and expected object data size).
-     */
+ *将膨胀的对象数据从缓冲区复制到Buf，即不带*前置元数据(对象类型和预期对象数据大小)。
+*/ 
     memcpy(buf, buffer + bytes, stream.total_out - bytes);
-    /* The size of the inflated data without the prepended metadata. */
+    /*
+ 不带前置元数据的膨胀数据的大小。
+*/ 
     bytes = stream.total_out - bytes;
-    /* Continue inflation if not all data has been inflated. */
+    /*
+ 如果不是所有数据都被夸大了，那就是继续通货膨胀。
+*/ 
     if (bytes < *size && ret == Z_OK) {
         stream.next_out = buf + bytes;
         stream.avail_out = *size - bytes;
         while (inflate(&stream, Z_FINISH) == Z_OK)
-            /* Linus Torvalds: nothing */;
+            /*
+ 莱纳斯·托瓦尔兹：什么都没有。
+*/ ;
     }
-    /* Free memory structures that were used for the inflation. */
+    /*
+ 用于膨胀的空闲内存结构。
+*/ 
     inflateEnd(&stream);
-    return buf;   /* Return the inflated object data. */
+    return buf;   /*
+ 返回膨胀的对象数据。
+*/ 
 }
 
 /*
- * Function: `write_sha1_file`
- * Parameters:
- *      -buf: The content to be deflated and written to the object store.
- *      -len: The length in bytes of the content pre-compression.
- * Purpose: Deflate an object, calculate the hash value, then call the
- *          write_sha1_buffer function to write the deflated object to the 
- *          object database.
- */
+ *函数：`WRITE_SHA1_FILE`*参数：*-buf：要放空并写入对象存储的内容。*-len：压缩前内容的长度，单位为字节。*用途：放空对象，计算哈希值，然后调用*WRITE_SHA1_BUFFER函数将放气对象写入*对象数据库。
+*/ 
 int write_sha1_file(char *buf, unsigned len)
 {
-    int size;                 /* Total size of compressed output. */
-    char *compressed;         /* Used to store compressed output. */
-    z_stream stream;          /* Declare zlib z_stream structure. */
-    unsigned char sha1[20];   /* Array to store SHA1 hash. */
-    SHA_CTX c;                /* Declare an SHA context structure. */
+    int size;                 /*
+ 压缩输出的总大小。
+*/ 
+    char *compressed;         /*
+ 用于存储压缩输出。
+*/ 
+    z_stream stream;          /*
+ 声明zlib z_stream结构。
+*/ 
+    unsigned char sha1[20];   /*
+ 用于存储SHA1哈希的数组。
+*/ 
+    SHA_CTX c;                /*
+ 声明SHA上下文结构。
+*/ 
 
-    /* Initialize the zlib stream to contain null characters. */
+    /*
+ 将zlib流初始化为包含空字符。
+*/ 
     memset(&stream, 0, sizeof(stream));
 
     /*
-     * Initialize compression stream for optimized compression 
-     * (as opposed to speed). 
-     */
+ *初始化压缩流以优化压缩*(相对于速度)。
+*/ 
     deflateInit(&stream, Z_BEST_COMPRESSION);
-    /* Determine upper bound on compressed size. */
+    /*
+ 确定压缩大小的上限。
+*/ 
     size = deflateBound(&stream, len); 
-    /* Allocate `size` bytes of space to store the next compressed output. */
+    /*
+ 分配`size`字节的空间来存储下一个压缩输出。
+*/ 
     compressed = malloc(size); 
 
-    /* Specify buf as location of the next input to the compression stream. */
+    /*
+ 指定buf作为压缩流的下一个输入的位置。
+*/ 
     stream.next_in = buf; 
-    /* Number of bytes available as input for next compression. */
+    /*
+ 可用作下一次压缩输入的字节数。
+*/ 
     stream.avail_in = len; 
-    /* Specify compressed as location to write the next compressed output. */
+    /*
+ 将压缩指定为写入下一个压缩输出的位置。
+*/ 
     stream.next_out = compressed; 
-    /* Number of bytes available for storing the next compressed output. */
+    /*
+ 可用于存储下一个压缩输出的字节数。
+*/ 
     stream.avail_out = size; 
 
-    /* Compress the content of buf, i.e., compress the object. */
+    /*
+ 压缩buf的内容，即压缩对象。
+*/ 
     while (deflate(&stream, Z_FINISH) == Z_OK) 
-    /* Linus Torvalds: nothing */;
+    /*
+ 莱纳斯·托瓦尔兹：什么都没有。
+*/ ;
 
     /*
-     * Free memory structures that were dynamically allocated for the
-     * compression. 
-     */
+ *动态分配的空闲内存结构*压缩。
+*/ 
     deflateEnd(&stream); 
-    /* Get size of total compressed output. */
+    /*
+ 获取总压缩输出的大小。
+*/ 
     size = stream.total_out; 
 
-    /* Initialize the SHA context structure. */
+    /*
+ 初始化SHA上下文结构。
+*/ 
     SHA1_Init(&c); 
-    /* Calculate hash of the compressed output. */
+    /*
+ 计算压缩输出的哈希。
+*/ 
     SHA1_Update(&c, compressed, size); 
-    /* Store the SHA1 hash of the compressed output in `sha1`. */
+    /*
+ 将压缩输出的sha1哈希存储在`sha1`中。
+*/ 
     SHA1_Final(sha1, &c); 
 
-    /* Write the compressed object to the object store. */
+    /*
+ 将压缩对象写入对象存储区。
+*/ 
     if (write_sha1_buffer(sha1, compressed, size) < 0)
         return -1;
     /*
-     * Display the 40-character hexadecimal representation of the object's 
-     * SHA1 hash value.
-     */
+ *显示对象的40字符十六进制表示形式*SHA1哈希值。
+*/ 
     printf("%s\n", sha1_to_hex(sha1));
     return 0;
 }
 
 /*
- * Function:`write_sha1_buffer`
- * Parameters:
- *      -sha1: The SHA1 hash of the deflated object to be written into the 
- *             object store.
- *      -buf:  The content to be written to the object store.
- *      -size: The size of the content to be written into the object store.
- * Purpose: Write an object to the object database, using the object's SHA1 
- *          hash value as index.
- */
+ *函数：`WRITE_SHA1_Buffer`*参数：*-sha1：要写入*对象存储。*-buf：要写入对象存储的内容。*-Size：要写入对象存储的内容的大小。*用途：使用对象的SHA1将对象写入对象数据库*哈希值作为索引。
+*/ 
 int write_sha1_buffer(unsigned char *sha1, void *buf, unsigned int size)
 {
     /*
-     * Build the path of the object in the object database using the object's 
-     * SHA1 hash.
-     */
+ *使用对象的在对象数据库中构建对象的路径*SHA1哈希。
+*/ 
     char *filename = sha1_file_name(sha1);
-    int i;    /* Unused variable. Even Linus Torvalds makes mistakes. */
-    int fd;   /* File descriptor for the file to be written. */
+    int i;    /*
+ 未使用的变量。即使是莱纳斯·托瓦尔兹也会犯错。
+*/ 
+    int fd;   /*
+ 要写入的文件的文件描述符。
+*/ 
 
-    /* Open a new file in the object store and associate it with `fd`. */
+    /*
+ 在对象存储中打开一个新文件，并将其与`fd`关联。
+*/ 
     fd = OPEN_FILE(filename, O_WRONLY | O_CREAT | O_EXCL, 0666);
 
-    /* Error if failure occurs when opening the file. */
+    /*
+ 如果打开文件时出现故障，则出错。
+*/ 
     if (fd < 0)
         return (errno == EEXIST) ? 0 : -1;
 
-    write(fd, buf, size);   /* Write the object to the object store. */
-    close(fd);              /* Release the file descriptor. */
+    write(fd, buf, size);   /*
+ 将对象写入对象存储区。
+*/ 
+    close(fd);              /*
+ 释放文件描述符。
+*/ 
     return 0;
 }
 
 /*
- * Function: `error`
- * Paramters:
- *      -string: The error message to print.
- * Purpose: Print an error message to the standard error stream.
- */
+ *函数：`error`*参数：*-字符串：要打印的错误消息。*用途：将错误消息打印到标准错误流。
+*/ 
 static int error(const char * string)
 {
     fprintf(stderr, "error: %s\n", string);
@@ -667,76 +514,83 @@ static int error(const char * string)
 }
 
 /*
- * Function: `verify_header`
- * Parameters:
- *      -hdr: A pointer to the cache header structure to validate.
- *      -size: The size in bytes of the cache file.
- * Purpose: Validate a cache_header.
- */
+ *函数：`Verify_Header`*参数：*-hdr：指向要验证的缓存头结构的指针。*-SIZE：缓存文件的字节大小。*用途：验证CACHE_HEADER。
+*/ 
 static int verify_hdr(struct cache_header *hdr, unsigned long size)
 {
-    SHA_CTX c;                /* Declare a SHA context. */
-    unsigned char sha1[20];   /* Array to store SHA1 hash. */
+    SHA_CTX c;                /*
+ 声明SHA上下文。
+*/ 
+    unsigned char sha1[20];   /*
+ 用于存储SHA1哈希的数组。
+*/ 
 
     /*
-     * Ensure the cache_header's signature matches the value defined in 
-     * "cache.h". 
-     */
+ *确保CACHE_HEADER的签名匹配中定义的值*“cache.h”。
+*/ 
     if (hdr->signature != CACHE_SIGNATURE)
         return error("bad signature");
 
-    /* Ensure the cache_header was created with the correct version of Git. */
+    /*
+ 确保
+*/ 
     if (hdr->version != 1)
         return error("bad version");
 
-    /* Initialize the SHA context `c`. */
+    /*
+ 
+*/ 
     SHA1_Init(&c); 
 
-    /* Calculate the hash of the cache header and cache entries. */ 
+    /*
+ 计算缓存头和缓存条目的哈希值。
+*/  
     SHA1_Update(&c, hdr, offsetof(struct cache_header, sha1));
     SHA1_Update(&c, hdr+1, size - sizeof(*hdr));
     SHA1_Final(sha1, &c);
 
     /*
-     * Compare the SHA1 hash calculated above to the SHA1 hash stored in the 
-     * cache header. If they match, then the cache is valid.
-     */
+ *将上面计算的SHA1散列与存储在*缓存头。如果它们匹配，则缓存有效。
+*/ 
     if (memcmp(sha1, hdr->sha1, 20))
         return error("bad header sha1");
     return 0;
 }
 
 /*
- * Function: `read_cache`
- * Parameters: none
- * Purpose: Reads the cache entries in the `.dircache/index` file into the 
-  8         `active_cache` array.
- */
+ *函数：`Read_cache`*参数：无*用途：将`.dircache/index`文件中的缓存项读取到8个`active_cache`数组。
+*/ 
 int read_cache(void)
 {
-    int fd;           /* File descriptor. */
-    int  i;           /* For loop iteration variable. */
-    struct stat st;   /* `stat` structure for storing file information. */
+    int fd;           /*
+ 文件描述符。
+*/ 
+    int  i;           /*
+ 对于循环迭代变量。
+*/ 
+    struct stat st;   /*
+ 用于存储文件信息的`stat`结构。
+*/ 
     unsigned long size, offset;
     /*
-     * Used to store the memory address in which to map the contents of the 
-     * `.dircache/index` cache file.  
-     */
+ *用于存储要在其中映射*`.dircache/index`缓存文件。
+*/ 
     void *map; 
-    /* Declare a pointer to a cache header, as defined in "cache.h". */
+    /*
+ 声明一个指向缓存头的指针，如“cache.h”中所定义。
+*/ 
     struct cache_header *hdr; 
 
-    /* Check if active_cache array is already populated. */
+    /*
+ 检查ACTIVE_CACHE阵列是否已填充。
+*/ 
     errno = EBUSY;
     if (active_cache) 
         return error("more than one cachefile");
 
     /*
-     * Get the path to the object store by first checking if anything is 
-     * stored in the `DB_ENVIRONMENT` environment variable. If not, use the 
-     * default path specified in `DEFAULT_DB_ENVIRONMENT`, which is 
-     * `.dircache/objects`. Then check if the directory can be accessed.
-     */
+ *通过首先检查是否存在以下内容来获取对象存储的路径*存储在`DB_ENVIRONMENT`环境变量中。如果不是，请使用*`DEFAULT_DB_ENVIRONMENT`中指定的默认路径，即*`.dircache/Objects`。然后检查是否可以访问该目录。
+*/ 
     errno = ENOENT;
     sha1_file_directory = getenv(DB_ENVIRONMENT);
     if (!sha1_file_directory)
@@ -745,26 +599,22 @@ int read_cache(void)
         return error("no access to SHA1 file directory");
 
     /*
-     * Open the `.dircache/index` cache file and associate it with the `fd` 
-     * file descriptor (just an integer).
-     */
+ *打开`.dircache/index`缓存文件，关联`fd`*文件描述符(仅为整数)。
+*/ 
     #ifndef BGIT_WINDOWS
     fd = open(".dircache/index", O_RDONLY );
     #else
     fd = open(".dircache/index", O_RDONLY | O_BINARY );
     #endif
     /*
-     * Return if file does not exist or if there was an error opening the
-     * file.
-     */
+ *如果文件不存在或打开时出错，则返回*文件。
+*/ 
     if (fd < 0)
         return (errno == ENOENT) ? 0 : error("open failed");
 
     /*
-     * I had to look up what this `(void *)-1` means. Apparently it is a
-     * reference to an always invalid memory location that would not be
-     * able to be returned in the event of successful operation.
-     */
+ *我不得不查一下这个`(void*)-1`是什么意思。显然，这是一种*对始终无效的内存位置的引用，该位置不会*如果操作成功，可以退回。
+*/ 
     #ifndef BGIT_WINDOWS
     map = (void *)-1;
     #else
@@ -772,42 +622,28 @@ int read_cache(void)
     #endif
 
     /*
-     * Get the cache file information and store it in the `st` stat structure.
-     * Execute the `if` block if the `fstat()` command returns 0, i.e., is 
-     * successful.
-     */
+ *获取缓存文件信息，存储在`st`统计结构中。*如果`fstat()`命令返回0，即为，则执行`if`块*成功。
+*/ 
     if (!fstat(fd, &st)) {
         map = NULL;
 
         /*
-         * Set `size` equal to the `st_size` member of the `st` structure, 
-         * which is the size of the `.dircache/index` file in bytes.
-         */
+ *设置`size`等于`st`结构的`st_size`成员。*`.dircache/index`文件的大小，单位为字节。
+*/ 
         size = st.st_size;
 
         /*
-         * Preset the error code to be returned to invalid argument if an 
-         * error occurs. 
-         */
+ *预置返回无效参数的错误代码*出现错误。
+*/ 
         errno = EINVAL; 
 
         /*
-         * Check to make sure the size of the returned index file is greater
-         * than the size of the `cache_header` structure. This must be true 
-         * for a valid cache since it must be made up of a cache header and 
-         * at least one cache entry.
-         */
+ *检查以确保返回的索引文件大小更大*大于`缓存_头`结构的大小。这一定是真的*用于有效的缓存，因为它必须由缓存头和*至少一个缓存条目。
+*/ 
         if (size > sizeof(struct cache_header)) {
             /*
-             * Map the contents of the `.dircache/index` cache file to memory 
-             * and return a pointer to that space. For more details on the
-             * `mmap()` function, see:
-             *
-             * http://pubs.opengroup.org/onlinepubs/009695399/functions/
-             * mmap.html
-             * https://stackoverflow.com/questions/258091/
-             * when-should-i-use-mmap-for-file-access
-             */
+ *将`.dircache/index`缓存文件的内容映射到内存*并返回指向该空间的指针。了解更多有关*`mmap()`函数，参见：**http://pubs.opengroup.org/onlinepubs/009695399/functions/*mmap.html*https://stackoverflow.com/questions/258091/*何时应使用mmap进行文件访问。
+*/ 
             #ifndef BGIT_WINDOWS
             map = mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
             #else
@@ -823,16 +659,13 @@ int read_cache(void)
     }
 
     /*
-     * Deallocate the file descriptor `fd` so that it is available for future
-     * calls to `open()`. For example, if fd = 1, the file descriptor 1 will 
-     * be deallocated and be made avaliable to refer to files. 
-     */
+ *取消分配文件描述符`fd`，以便将来使用*调用`open()`。例如，如果fd=1，则文件描述符1将*被解除分配，并可以引用文件。
+*/ 
     close(fd);
 
     /*
-     * Display an error message and return -1 if `mmap()` failed to map the 
-     * file to memory. 
-     */
+ *如果-1\f25`mmap()`-1\f6映射失败，则显示错误信息并返回*文件到内存。
+*/ 
     #ifndef BGIT_WINDOWS
     if (-1 == (int)(long)map)
         return error("mmap failed");
@@ -842,52 +675,48 @@ int read_cache(void)
     #endif
 
     /*
-     * Set the `hdr` cache header pointer to point to the memory address where 
-     * the `.dircache/index` file's contents were mapped. Then call 
-     * `verify_hdr()` to validate that the cache header. If the header is not 
-     * valid, the code jumps to the `unmap` label at the end of this file.
-     */
+ *设置`hdr`缓存头指针指向所在的内存地址*映射了`.dircache/index`文件的内容。然后打电话给*`verify_hdr()`验证缓存头。如果标头不是*有效，代码跳转到此文件末尾的`unmap`标签。
+*/ 
     hdr = map;
     if (verify_hdr(hdr, size) < 0)
         goto unmap;
 
-    /* The number of cache entries in the cache. */
+    /*
+ 缓存中的缓存条目数。
+*/ 
     active_nr = hdr->entries; 
-    /* The maximum number of elements the active_cache array can hold. */
+    /*
+ ACTIVE_CACHE数组可以容纳的最大元素数。
+*/ 
     active_alloc = alloc_nr(active_nr); 
 
     /*
-     * Allocate memory for the `active_cache` array. Memory is allocated for
-     * an array of `active_alloc` number of elements, each one having the size 
-     * of a `cache_entry` structure.
-     */
+ *为`active_cache`数组分配内存。内存被分配给*一个由`active_alLoc`数量的元素组成的数组，每个元素的大小*为`缓存_条目`结构。
+*/ 
     active_cache = calloc(active_alloc, sizeof(struct cache_entry *));
 
     /*
-     * `offset` is an index to the next byte of `map` to read. In this case,
-     * set it to the beginning of the first cache entry after the header. 
-     */
+ *`offset`是要读取的`map`的下一个字节的索引。在这种情况下，*将其设置为报头后第一个缓存条目的开头。
+*/ 
     offset = sizeof(*hdr); 
 
     /*
-     * Add each cache entry into the `active_cache` array and increase the 
-     * `offset` index by the size of the current cache entry..
-     */
+ *将每个缓存条目添加到`active_cache`数组中，并增加*当前缓存条目大小的`offset`索引..。
+*/ 
     for (i = 0; i < hdr->entries; i++) {
         struct cache_entry *ce = map + offset;
         offset = offset + ce_size(ce);
         active_cache[i] = ce;
     }
     
-    /* Return the number of cache entries in the cache. */
+    /*
+ 返回缓存中的缓存条目数。
+*/ 
     return active_nr;
 
 /*
- * The lines of code after the 'unmap' label are only executed if the cache 
- * header is invalid. In that case, the mapping between the cache file and 
- * memory is removed to prevent memory leaks. Then display an error message 
- * and return -1.
- */
+ *仅当缓存设置为*标头无效。在这种情况下，缓存文件和*移除内存以防止内存泄漏。然后显示一条错误消息*并返回-1。
+*/ 
 unmap:
     #ifndef BGIT_WINDOWS
     munmap(map, size);

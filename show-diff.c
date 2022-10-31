@@ -1,72 +1,12 @@
+// THIS_SOURCES_HAS_BEEN_TRANSLATED 
 /*
- *  All documentation (comments) unless explicitly noted:
- *
- *      Copyright 2018, AnalytixBar LLC, Jacob Stopak
- *
- *  All code & explicitly labelled documentation (comments):
- *      
- *      Copyright 2005, Linus Torvalds
- *
- *  This program is free software; you can redistribute it and/or
- *  modify it under the terms of the GNU General Public License
- *  version 2 as published by the Free Software Foundation.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with this program; if not, see <http://www.gnu.org/licenses/>.
- *
- **************************************************************************
- *
- *  The purpose of this file is to be compiled into an executable
- *  called `show-diff`. When `show-diff` is run from the command line
- *  it does not take any command line arguments.
- *
- *  The `show-diff` command is used to show the differences between
- *  files staged in the index and the current versions of those files
- *  as they exist in the filesystem.
- *
- *  Everything in the main function in this file will run
- *  when ./show-diff executable is run from the command line.
- */
+ *除非明确说明，否则所有文档(备注)：**版权所有2018，AnalytixBar LLC，Jacob Stopak**所有代码和明确标记的文档(注释)：**版权所有2005年，Linus Torvalds**这个程序是自由软件；您可以重新分发它和/或*根据GNU通用公共许可证的条款进行修改*自由软件基金会发布的版本2。**这个程序的分发是希望它能有用，*但没有任何保证；甚至没有*适销性或对某一特定目的的适用性。请参阅*GNU通用公共许可证，了解更多详细信息。**您应已收到GNU通用公共许可证的副本*与这项计划一起；如果不是，请参阅&lt;http://www.gnu.org/licenses/&gt;.*****************************************************************************此文件的目的是编译成可执行文件*称为`show-diff`。当从命令行运行`show-diff`时*它不需要任何命令行参数。**`show-diff`命令用于显示*索引中暂存的文件以及这些文件的当前版本*因为它们存在于文件系统中。**此文件中Main函数中的所有内容都将运行*当./show-diff可执行文件从命令行运行时。
+*/ 
 
 #include "cache.h"
-/* The above 'include' allows use of the following functions and
-   variables from "cache.h" header file, ranked in order of first use
-   in this file. Most are functions/macros from standard C libraries
-   that are `#included` in "cache.h". Function names are followed by
-   parenthesis whereas variable/struct names are not:
-
-   -snprintf(char *s, size_t n, const char *format, ...):
-        Write the formatted string `format` into `s`, with `n` specifying the 
-        maximum number of characters that should be written to `s`, including 
-        the null terminating character.
-
-   -popen(command, mode): Create a pipe between the calling program and a 
-                          shell command and return a pointer to a stream that 
-                          enables read or write access to the command 
-                          depending on the value of mode. Sourced from 
-                          <stdio.h>.
-
-   -fwrite(data, size, nitems, stream): Write up to `nitems`, each of size 
-                                        `size`, from array `data` to `stream`.
-                                        Sourced from <stdio.h>.
-
-   -pclose(stream): Close a stream that was opened by popen(). Sourced from 
-                    <stdio.h>.
-
-   -read_cache(): Reads the contents of the `.dircache/index` file into the 
-                  `active_cache` array. 
-
-   -printf(message, ...): Write `message` to standard output stream stdout.  
-                          Sourced from <stdio.h>.
-
-   -free(ptr): Deallocates the space pointed to by `ptr`. Sourced from 
-               <stdlib.h>.
-*/
+/*
+ 上面的‘Include’允许使用以下函数和“cache.h”头文件中的变量，按第一次使用的顺序排序在这份文件中。大多数是标准C库中的函数/宏它们是“cache.h”中的`#includded`。函数名后面跟有圆括号，而变量/结构名称不是：-Snprint tf(char*s，Size_t n，const char*Format，...)：将格式化字符串`Format`写入`s`，其中`N`指定应写入`s`的最大字符数，包括空的终止字符。-Popen(命令，模式)：在调用程序和命令并返回指向流的指针，启用对命令的读或写访问权限取决于模式的值。来源：&lt;stdio.h&gt;。-fWRITE(data，size，items，stream)：最多写入`nitems`，每个文件的大小`size`，从数组`data`到`stream`。来源：&lt;stdio.h&gt;。-pClose(Stream)：关闭Popen()打开的流。来源：&lt;stdio.h&gt;。-READ_CACHE()：将`.dircache/index`文件的内容读入`active_cache`数组。-print tf(Message，...)：将`Message`写入标准输出流stdout。来源：&lt;stdio.h&gt;。-Free(Ptr)：释放`ptr`指向的空间。来源：&lt;stdlib.h&gt;。
+*/ 
 
 #define MTIME_CHANGED   0x0001
 #define CTIME_CHANGED   0x0002
@@ -76,205 +16,206 @@
 #define DATA_CHANGED    0x0020
 
 /*
- * Function: `match_stat`
- * Parameters:
- *      -ce: Pointer to a cache entry structure.
- *      -st: Pointer to a stat structure containing metadata of the working 
- *           file that corresponds to the cache entry. 
- * Purpose: Compare metadata stored in a cache entry to the metadata of the 
- *          corresponding working file to check if they are the same or if
- *          anything changed.
- */
+ *函数：`Match_stat`*参数：*-ce：指向缓存条目结构的指针。*-st：指向包含正在处理的元数据的统计结构的指针*与缓存条目对应的文件。*目的：将存储在缓存条目中的元数据与*对应的工作文件检查是否相同或是否相同*任何事情都改变了。
+*/ 
 static int match_stat(struct cache_entry *ce, struct stat *st)
 {
-    /* Flag to indicate which file metadata changed, if any. */
+    /*
+ 用于指示哪些文件元数据已更改(如果有)的标志。
+*/ 
     unsigned int changed = 0;
 
     /*
-     * Compare metadata stored in a cache entry to those of the corresponding
-     * working file to check if they are the same.
-     */
+ *将存储在缓存条目中的元数据与相应的*工作文件以检查它们是否相同。
+*/ 
 
-    /* Check last modification time. */
+    /*
+ 检查上次修改时间。
+*/ 
     if (ce->mtime.sec  != (unsigned int)STAT_TIME_SEC( st, st_mtim ) ||
         ce->mtime.nsec != (unsigned int)STAT_TIME_NSEC( st, st_mtim ))
             changed |= MTIME_CHANGED;
-    /* Check time of last status change. */
+    /*
+ 检查上次状态更改的时间。
+*/ 
     if (ce->ctime.sec  != (unsigned int)STAT_TIME_SEC( st, st_ctim ) ||
         ce->ctime.nsec != (unsigned int)STAT_TIME_NSEC( st, st_ctim ))
             changed |= CTIME_CHANGED;
 
-    /* Check file user ID and group ID. */
+    /*
+ 检查文件用户ID和组ID。
+*/ 
     if (ce->st_uid != (unsigned int)st->st_uid ||
         ce->st_gid != (unsigned int)st->st_gid)
         changed |= OWNER_CHANGED;
-    /* Check file mode. */
+    /*
+ 检查文件模式。
+*/ 
     if (ce->st_mode != (unsigned int)st->st_mode)
         changed |= MODE_CHANGED;
     #ifndef BGIT_WINDOWS
-    /* Check device ID and file inode number. */
+    /*
+ 检查设备ID和文件索引节点号。
+*/ 
     if (ce->st_dev != (unsigned int)st->st_dev ||
         ce->st_ino != (unsigned int)st->st_ino)
         changed |= INODE_CHANGED;
     #endif
-    /* Check file size. */
+    /*
+ 检查文件大小。
+*/ 
     if (ce->st_size != (unsigned int)st->st_size)
         changed |= DATA_CHANGED;
     return changed;
 }
 
 /*
- * Function: `show_differences`
- * Parameters:
- *      -ce: Pointer to a cache entry structure.
- *      -cur: Pointer to a stat structure containing metadata of the working 
- *            file that corresponds to the cache entry. 
- *      -old_contents: The blob data corresponding to the cache entry.
- *      -old_size: The size of the blob data in bytes.
- * Purpose: Use the diff shell command to display the differences between the 
- *          blob data corresponding to the cache entry and the contents of the 
- *          corresponding working file.
- */
+ *函数：`show_Differences`*参数：*-ce：指向缓存条目结构的指针。*-cur：指向包含正在处理的元数据的状态结构的指针*与缓存条目对应的文件。*-old_content：缓存条目对应的BLOB数据。*-old_Size：BLOB数据的大小，单位为字节。*用途：使用diff外壳命令显示*与缓存条目对应的BLOB数据和*相应的工作文件。
+*/ 
 static void show_differences(struct cache_entry *ce, struct stat *cur,
                              void *old_contents, unsigned long long old_size)
 {
-    static char cmd[1000];   /* String to store the diff command. */
-    FILE *f;                 /* Declare a file pointer. */
+    static char cmd[1000];   /*
+ 用于存储diff命令的字符串。
+*/ 
+    FILE *f;                 /*
+ 声明一个文件指针。
+*/ 
 
     /*
-     * Construct the diff command for this cache entry, which will be used to 
-     * display the differences between the blob data corresponding to the
-     * cache entry and the contents of the corresponding working file.
-     * Store the command string in `cmd`. 
-     */
+ *为该缓存条目构造diff命令，该命令将用于*显示对应的BLOB数据差异*缓存条目和相应工作文件的内容。*将命令字符串存储在`cmd`中。
+*/ 
     snprintf(cmd, sizeof(cmd), "diff --strip-trailing-cr -u - %s", ce->name);
 
     /*
-     * Create a pipe to the diff command and return a pointer to the
-     * corresponding stream for writing. 
-     */
+ *创建指向diff命令的管道，并返回指向*对应的写入流。
+*/ 
     f = popen(cmd, "w");
 
     /*
-     * Write the blob object data corresponding to the current cache entry to 
-     * the command stream to complete the command, thus effectively executing 
-     * the diff command.
-     */
+ *将当前缓存条目对应的BLOB对象数据写入*完成的命令流
+*/ 
     fwrite(old_contents, old_size, 1, f);
 
-    /* Close the command stream. */
+    /*
+ 关闭命令流。
+*/ 
     pclose(f);
 }
 
 /*
- * Function: `main`
- * Parameters:
- *      -argc: The number of command-line arguments supplied, inluding the 
- *             command itself. 
- *      -argv: An array of the command line arguments, including the command 
- *             itself.
- * Purpose: Standard `main` function definition. Runs when the executable 
- *          `show-diff` is run from the command line. 
- */
+ *功能：`main`*参数：*-argc：提供的命令行参数的数量，包括*命令本身。*-argv：命令行参数的数组，包括命令*本身。*用途：标准`main`函数定义。运行时，可执行文件*`show-Diff`从命令行运行。
+*/ 
 int main(int argc, char **argv)
 {
     /*
-     * Reads the contents of the `.dircache/index` file into the 
-     * `active_cache` array and returns the number of cache entries.
-     */
+ *将`.dircache/index`文件的内容读取到*`active_cache`数组，返回缓存条目数。
+*/ 
     int entries = read_cache();
 
-    /* For loop counter. */
+    /*
+ 用于循环计数器。
+*/ 
     int i;
 
     /*
-     * If there was an error reading the cache, display an error message and 
-     * exit. 
-     */
+ *如果读取缓存时出错，则显示一条错误消息并*退出。
+*/ 
     if (entries < 0) {
         perror("read_cache");
         exit(1);
     }
 
-    /* Loop through the cache entries in the active_cache array. */
+    /*
+ 循环访问ACTIVE_CACHE数组中的缓存条目。
+*/ 
     for (i = 0; i < entries; i++) {
-        /* Declare a stat structure to store file metadata. */
+        /*
+ 声明一个Stat结构来存储文件元数据。
+*/ 
         struct stat st;
-        /* The current cache entry. */
+        /*
+ 当前缓存条目。
+*/ 
         struct cache_entry *ce = active_cache[i];
-        /* For loop counter. */
+        /*
+ 用于循环计数器。
+*/ 
         int n;
-        /* Flag to indicate which file metadata changed, if any. */
+        /*
+ 用于指示哪些文件元数据已更改(如果有)的标志。
+*/ 
         int changed;
-        /* Not used. */
+        /*
+ 没有用过。
+*/ 
         unsigned int mode;
-        /* Blob object data size. */
+        /*
+ Blob对象数据大小。
+*/ 
         unsigned long size;
-        /* Used to store the object type (blob in this case ). */
+        /*
+ 用于存储对象类型(本例中为BLOB)。
+*/ 
         char type[20];
-        /* Used to store the blob object data. */
+        /*
+ 用于存储Blob对象数据。
+*/ 
         void *new;
 
         /*
-         * Use the stat() function to obtain information about the working 
-         * file corresponding to the current cache entry and store it in the 
-         * `st` stat structure. If the stat() call fails, display an error
-         * message and continue to the next cache entry.
-         */
+ *使用stat()函数获取有关工作的信息*与当前缓存条目对应的文件，并将其存储在*`st`统计结构。如果stat()调用失败，则显示错误*消息并继续到下一个缓存条目。
+*/ 
         if (stat(ce->name, &st) < 0) {
             printf("%s: %s\n", ce->name, strerror(errno));
             continue;
         }
 
         /*
-         * Compare the metadata stored in the cache entry to those of the 
-         * corresponding working file to check if they are the same or if
-         * anything changed. 
-         */
+ *将存储在缓存条目中的元数据与*对应的工作文件检查是否相同或是否相同*任何事情都改变了。
+*/ 
         changed = match_stat(ce, &st);
 
         /*
-         * If no metadata changed, display an ok message and continue to the 
-         * next cache entry in the active_cache array. 
-         */
+ *如果元数据没有更改，则显示OK消息并继续到*ACTIVE_CACHE数组中的下一个缓存条目。
+*/ 
         if (!changed) {
             printf("%s: ok\n", ce->name);
             continue;
         }
 
-        /* Fall through here if any metadata changed. */
+        /*
+ 如果有任何元数据更改，请跳过此处。
+*/ 
 
         /*
-         * Display the path of the file corresponding to the current cache
-         * entry.
-         */
+ *显示当前缓存对应的文件路径*进入。
+*/ 
         printf("%.*s:  ", ce->namelen, ce->name);
 
         /*
-         * Display the hexadecimal representation of the SHA1 hash of the blob 
-         * object corresponding to the current cache entry. 
-         */
+ *显示Blob的SHA1散列的十六进制表示形式*当前缓存条目对应的对象。
+*/ 
         for (n = 0; n < 20; n++)
             printf("%02x", ce->sha1[n]);
 
-        printf("\n");   /* Print a newline. */
+        printf("\n");   /*
+ 打印换行符。
+*/ 
 
         /*
-         * Read the blob object from the object store using its SHA1 hash,
-         * inflate it, and return a pointer to the object data (without the 
-         * prepended metadata). Store the object type and object data size in 
-         * `type` and `size` respectively.
-         */
+ *使用BLOB对象的SHA1散列从对象存储读取BLOB对象，*使其膨胀，并返回指向对象数据的指针(不带*预置的元数据)。将对象类型和对象数据大小存储在*`type`和`size`。
+*/ 
         new = read_sha1_file(ce->sha1, type, &size);
 
         /*
-         * Use the diff shell command to display the differences between the 
-         * blob data corresponding to the current cache entry and the contents 
-         * of the corresponding working file.
-         */
+ *使用diff外壳命令显示*当前缓存条目和内容对应的BLOB数据*相应的工作文件。
+*/ 
         show_differences(ce, &st, new, size);
 
-        /* Deallocate the space pointed to by `new`. */
+        /*
+ 释放`new`指向的空间。
+*/ 
         free(new);
     }
     return 0;

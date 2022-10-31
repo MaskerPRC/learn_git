@@ -1,241 +1,12 @@
+// THIS_SOURCES_HAS_BEEN_TRANSLATED 
 /*
- *  All documentation (comments) unless explicitly noted:
- *
- *      Copyright 2018, AnalytixBar LLC, Jacob Stopak
- *
- *  All code & explicitly labelled documentation (comments):
- *      
- *      Copyright 2005, Linus Torvalds
- *
- *  This program is free software; you can redistribute it and/or
- *  modify it under the terms of the GNU General Public License
- *  version 2 as published by the Free Software Foundation.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with this program; if not, see <http://www.gnu.org/licenses/>.
- *
- **************************************************************************
- *
- *  The purpose of this file is to be compiled into an executable
- *  called `update-cache`. This command is the equivalent to `git
- *  add` in current versions of Git. When `update-cache` is run
- *  from the command-line it will take as an argument the name of
- *  a file to be added to the index (or as Mr. Torvalds calls it
- *  in the README, the "Current Directory Cache"), which is stored 
- *  in the .dircache/index file by default. This can be thought of
- *  as the "Staging Area" where changes ready to be committed are
- *  built up.
- *
- *  The `main` function in this file will run when ./update-cache
- *  executable is run from the command line.
- */
+ *除非明确说明，否则所有文档(备注)：**版权所有2018，AnalytixBar LLC，Jacob Stopak**所有代码和明确标记的文档(注释)：**版权所有2005年，Linus Torvalds**这个程序是自由软件；您可以重新分发它和/或*根据GNU通用公共许可证的条款进行修改*自由软件基金会发布的版本2。**这个程序的分发是希望它能有用，*但没有任何保证；甚至没有*适销性或对某一特定目的的适用性。请参阅*GNU通用公共许可证，了解更多详细信息。**您应已收到GNU通用公共许可证的副本*与这项计划一起；如果不是，请参阅&lt;http://www.gnu.org/licenses/&gt;.*****************************************************************************此文件的目的是编译成可执行文件*称为`更新缓存`。此命令相当于`git*add`在当前版本的Git中。当运行`update-cache`时*在命令行中，它将使用名称作为参数*要添加到索引中的文件(或Torvalds先生所称的文件*在自述文件中，存储了*默认情况下在.dircache/index文件中。这是可以想象的*作为准备提交更改的“中转区”*积累起来。**此文件中的`main`函数将在./更新-缓存时运行*可执行文件从命令行运行。
+*/ 
 
 #include "cache.h"
-/* The above 'include' allows use of the following functions and
-   variables from "cache.h" header file, ranked in order of first use
-   in this file. Most are functions/macros from standard C libraries
-   that are `#included` in "cache.h". Function names are followed by
-   parenthesis whereas variable/struct names are not:
-
-   -memcmp(str1, str2, n): Compare first n bytes of str1 to str2 and return an 
-                           integer greater than, equal to, or less than 0, if 
-                           the object pointed to by str1 is greater than, 
-                           equal to, or less than the object pointed to by 
-                           str2, respectively. Sourced from <string.h>.
-
-   -active_nr: The number of entries in the active cache/index.
-
-   -cache_entry: Structure representing a single cached/staged file.
-
-   -active_cache: Array representing the active cache/index.
-
-   -memmove(str1, str2, n): Copy n bytes from the object pointed to by str2 
-                            to the object pointed to by str1.
-
-   -sizeof(datatype): Operator that gives the number of bytes needed to store 
-                      a datatype or variable. 
-
-   -z_stream: General-purpose compression/decompression stream. Sourced from
-              <zlib.h>.
-
-   -malloc(size): Allocate unused space for an object whose size in bytes is 
-                  specified by `size` and whose value is unspecified. Sourced 
-                  from <stdlib.h>.
-
-   -mmap(addr, len, prot, flags, file_descriptor, offset): 
-        Establish a mapping between a process' address space and a file, 
-        shared memory object, or typed memory object. Sourced from 
-        <sys/mman.h>.
-
-   -PROT_READ: Flag for the mmap() function's `prot` parameter describing
-               the desired memory protection of the mapping. `PROT_READ`
-               indicates that pages may be read. Sourced from <sys/mman.h>.
-                
-   -MAP_PRIVATE: Flag for the mmap() function's `flags` parameter describing
-                 the desired memory protection of the mapping. `MAP_PRIVATE`
-                 indicates that changes to the mapped data are private to the
-                 calling process and should not change the underlying object.
-                 Sourced from <sys/mman.h>.
-
-   -SHA_CTX: SHA context structure used to store information related to the
-             process of hashing the content. Sourced from <openssl/sha.h>.
-
-   -close(fd): Deallocate the file descriptor `fd`. The file descriptor `fd` 
-               will be made available to subsequent calls to open() or other 
-               function calls that allocate `fd`. Remove all locks owned by 
-               the process on the file associated with `fd`. Sourced from
-               <unistd.h>.
-
-   -memset(void *s, int c, size_t n): Copies `c` (converted to an unsigned
-                                      char) into each of the first `n` bytes
-                                      of the object pointed to by `s`.
-
-   -deflateInit(z_stream, level): Initializes the internal `z_stream` state 
-                                  for compression at `level`, which indicates 
-                                  the scale of speed versus compression on a 
-                                  scale from 0 to 9. Sourced from <zlib.h>.
-
-   -Z_BEST_COMPRESSION: Translates to compression level 9, which, as an input 
-                        to `deflateInit()`, indicates optimizing compression
-                        size as opposed to compression speed. Sourced from
-                        <zlib.h>.
-
-   -sprintf(s, message, ...): Writes `message` string constant to string 
-                              variable `s` followed by the null character 
-                              '\0'. Sourced from <stdio.h>.
-
-   -deflate(z_stream, flush): Compresses as much data as possible and stops
-                              when the input buffer becomes empty or the
-                              output buffer becomes full. Sourced from 
-                              <zlib.h>.
-
-   -Z_OK: Successful zlib return code. It is equal to 0. Sourced from 
-          <zlib.h>.
-
-   -Z_FINISH: Flush value for zlib that specifies processing of remaining 
-              input. It is equal to 4. Sourced from <zlib.h>.
-
-   -deflateEnd(z_stream): All dynamically allocated data structures for
-                          `z_stream` are freed. Sourced from <zlib.h>.
-
-   -SHA1_Init(SHA_CTX *c): Initializes a SHA_CTX structure. Sourced from 
-                           <openssl/sha.h>. 
-
-   -SHA1_Update(SHA_CTX *c, const void *data, size_t len): 
-        Can be called repeatedly to calculate the hash value of chunks of data 
-        (len bytes from data). Sourced from <openssl/sha.h>.
-
-   -SHA1_Final(unsigned char *md, SHA_CTX *c): 
-        Places the message digest in md, which must have space for 20 bytes of 
-        output, and erases the `c` SHA_CTX structure. Sourced from 
-        <openssl/sha.h>.
-
-   -stat: Structure pointer used by stat() function to store information
-          related to a filesystem file. Sourced from <sys/stat.h>.
-
-   -open(path, flags, perms): Open file in `path` for reading and/or writing 
-                              as specified in `flags` and return a file 
-                              descriptor that refers to the open file
-                              description. If the file does not exist, it is
-                              created with the permssions in `perms`. Sourced 
-                              from <fcntl.h>.
-
-   -O_RDONLY: Flag for the open() function indicating to open the file for
-              reading only. Sourced from <fcntl.h>.
-
-   -ENOENT: Failure code set as errno by the open() function when O_CREAT is 
-            not set and the named file does not exist; or O_CREAT is set and 
-            either the path prefix does not exist or the path argument points 
-            to an empty string. Sourced from <fcntl.h>.
-
-   -fstat(fd, buf): Obtain information about an open file associated with the 
-                    file descriptor `fd` and write it to the area pointed to 
-                    by `buf`, which is a pointer to a `stat` structure. 
-                    Sourced from <sys/stat.h>.
-
-   -strlen(string): Return the length of `string` in bytes.
-
-   -memcpy(s1, s2, n): Copy n bytes from the object pointed to by s2 into the 
-                       object pointed to by s1.
-
-   -cache_header: Structure representing header information for the cache.
-                  Sourced from "cache.h".
-
-   -CACHE_SIGNATURE: #Defined as `0x44495243`. Sourced from "cache.h".
-
-   -offsetof(type, member): Macro that expands to an integral constant 
-                            expression of type std::size_t, the value of which 
-                            is the offset, in bytes, from the beginning of an 
-                            object of specified type to its specified member, 
-                            including padding if any. Sourced from <stddef.h>.
-
-   -perror(message): Write `message` to standard error stream. Sourced from 
-                     <stdio.h>.
-
-   -O_RDWR: Flag for the open() function indicating to open the file for
-            reading and writing. Sourced from <fcntl.h>.
-
-   -O_CREAT: Flag for the open() function. If the file exists, this flag has 
-             no effect except as noted under O_EXCL below. Otherwise, the file 
-             shall be created. Sourced from <fcntl.h>.
-
-   -O_EXCL: Flag for the open() function. If O_CREAT and O_EXCL are set,
-            open() shall fail if the file exists.
-
-   -fprintf(stream, message, ...): Write `message` to the output `stream`. 
-                                   Sourced from <stdio.h>.
-
-   -rename(old, new): Change the name of a file. `old` points to the pathname 
-                      of the file to be renamed. `new` points to the new 
-                      pathname of the file. Sourced from <stdio.h>.
-
-   ****************************************************************
-
-   The following variables and functions are defined in this source file.
-
-   -main(argc, argv): The main function which runs each time the
-                      update-cache command is run.
-
-   -argc: The number of command line arguments supplied when executing 
-          update-cache.
-
-   -argv: Array containing command line argument strings.
-
-   -verify_path(): Checks if a file path is a valid path.
-
-   -add_file_to_cache(): Get information about the file to add to the cache, 
-                         store the file metadata in a cache_entry structure, 
-                         then call the `index_fd()` function to construct a 
-                         blob object and write it to the object store, and the 
-                         `add_cache_entry()` function to insert the cache 
-                         entry into the `active_cache` array 
-                         lexicographically.
-
-   -index_fd(): Constructs a blob object, compresses it, calculates the SHA1 
-                hash of the compressed blob object, then write the blob object 
-                to the object database.
-
-   -add_cache_entry(): Inserts a cache entry into the active_cache array
-                       lexicographically.
-
-   -cache_name_pos(): Determines the lexicographic position of a cache entry 
-                      in the active_cache array.
-
-   -cache_name_compare(): Compares the names of two cache entries
-                          lexicographically.
-
-   -remove_file_from_cache(): Removes a file's cache entry from the
-                              active_cache array.
-
-   -write_cache(): Constructs the cache header, calculates the SHA1 hash of 
-                   the cache, and then writes them to the 
-                   `.dircache/index.lock` file.
-*/
+/*
+ 上面的‘Include’允许使用以下函数和“cache.h”头文件中的变量，按第一次使用的顺序排序在这份文件中。大多数是标准C库中的函数/宏它们是“cache.h”中的`#includded`。函数名后面跟有圆括号，而变量/结构名称不是：-MemcMP(str1，str2，n)：将str1的前n个字节与str2进行比较并返回大于、等于或小于0的整数，如果由str1指向的对象大于，等于或小于由指向的对象Str2，分别进行了分析。来源：&lt;string.h&gt;。-active_nr：活动缓存/索引中的条目数。-CACHE_ENTRY：表示单个缓存/暂存文件的结构。-ACTIVE_CACHE：表示活动缓存/索引的数组。-MemMove(str1，str2，N)：从str2指向的对象复制n个字节指向str1指向的对象。-sizeof(数据类型)：给出需要存储的字节数的运算符数据类型或变量。-z_stream：通用压缩/解压缩流。来源：&lt;zlib.h&gt;。-Malloc(Size)：为大小为字节数的对象分配未使用的空间由`size`指定，其值未指定。来源：来自&lt;stdlib.h&gt;。-mmap(addr，len，prot，标志，FILE_DESCRIPTOR，Offset)：建立进程地址空间与文件之间的映射，共享内存对象或类型化内存对象。来源：&lt;sys/mman.h&gt;。-prot_read：mmap()函数的`prot`参数的标志，描述映射所需的内存保护。`PROT_READ`指示可以读取页面。来源：&lt;sys/mman.h&gt;。-MAP_PRIVATE：mmap()函数参数的标志，描述映射所需的内存保护。`MAP_PRIVATE`指示对映射数据的更改是调用过程，并且不应更改基础对象。来源：&lt;sys/mman.h&gt;。-SHA_CTX：SHA上下文结构，用于存储对内容进行散列的过程。来源：&lt;openssl/sha.h&gt;。-Close(Fd)：释放文件描述符`fd`。文件描述符`fd`将可供后续调用Open()或其他分配`fd`的函数调用。删除拥有的所有锁`fd`关联的文件上的进程。来源：&lt;unistd.h&gt;。-Memset(void*s，int c，ize_t n)：拷贝`c`(转换为无符号的Char)转换为前几个`N‘字节由`s`指向的对象的。-deflateInit(z_stream，Level)：初始化内部`Z_Stream`状态对于`Level`的压缩，表示上的速度与压缩的比例范围从0到9。来自&lt;zlib.h&gt;。-Z_BEST_COMPRESSION：Transla
+*/ 
 
 #ifndef BGIT_WINDOWS
     #define RENAME( src_file, target_file ) rename( src_file, target_file )
@@ -248,54 +19,58 @@
 #endif
 
 /*
- * Function: `cache_name_compare`
- * Parameters:
- *      -name1: The name of the first file to compare.
- *      -len1: The length of name1.
- *      -name2: The name of the second file to compare.
- *      -len2: The length of name2.
- * Purpose: Compare the names of two cache entries lexicographically.
- */
+ *函数：`缓存名称_比较`*参数：*-name1：要比较的第一个文件的名称。*-len1：名称1的长度。*-name2：要比较的第二个文件的名称。*-len2：名称2的长度。*目的：按词典顺序比较两个缓存条目的名称。
+*/ 
 static int cache_name_compare(const char *name1, int len1, const char *name2, 
                               int len2)
 {
-    int len = len1 < len2 ? len1 : len2;   /* len is the shorter length. */
+    int len = len1 < len2 ? len1 : len2;   /*
+ Len是较短的长度。
+*/ 
     int cmp;
 
     cmp = memcmp(name1, name2, len);
-    if (cmp)           /* First len characters are different. */
+    if (cmp)           /*
+ 第一个镜头的角色是不同的。
+*/ 
         return cmp;
-    if (len1 < len2)   /* First len characters are the same. */
+    if (len1 < len2)   /*
+ 第一个镜头字符是相同的。
+*/ 
         return -1;
-    if (len1 > len2)   /* First len characters are the same. */
+    if (len1 > len2)   /*
+ 第一个镜头字符是相同的。
+*/ 
         return 1;
-    return 0;          /* Exact match. */
+    return 0;          /*
+ 完全匹配。
+*/ 
 }
 
 /*
- * Function: `cache_name_pos`
- * Parameters:
- *      -name: The path of the file to be cached.
- *      -namelen: The length of the path.
- * Purpose: Determine the lexicographic position of a cache entry in the
- *          active_cache array.
- */
+ *函数：`缓存名称_位置`*参数：*-name：需要缓存的文件路径。*-namelen：路径的长度。*目的：确定缓存条目在*ACTIVE_CACHE阵列。
+*/ 
 static int cache_name_pos(const char *name, int namelen)
 {
-    /* Declare and initialize the indexes for the binary search. */
+    /*
+ 声明并初始化二进制搜索的索引。
+*/ 
     int first, last;
     first = 0;
     last = active_nr;
 
     /*
-     * Perform a binary search to determine the lexicographic position of the 
-     * cache entry in the active_cache array.
-     */
+ *执行二进制搜索以确定*ACTIVE_CACHE数组中的缓存条目。
+*/ 
     while (last > first) {
-        int next = (last + first) >> 1;   /* Division by 2. */
+        int next = (last + first) >> 1;   /*
+ 除以2。
+*/ 
         struct cache_entry *ce = active_cache[next];
         int cmp = cache_name_compare(name, namelen, ce->name, ce->namelen);
-        if (!cmp)            /* Exact match found. */
+        if (!cmp)            /*
+ 找到了完全匹配的。
+*/ 
             return -next-1;
         if (cmp < 0) {
             last = next;
@@ -307,15 +82,14 @@ static int cache_name_pos(const char *name, int namelen)
 }
 
 /*
- * Function: `remove_file_from_cache`
- * Parameters:
- *      -path: The path/filename of the file to remove from the active cache.
- * Purpose: Remove a file's cache entry from the active_cache array.
- */
+ *函数：`REMOVE_FILE_FROM_cache`*参数：*-Path：要从活动缓存中删除的文件的路径/文件名。*用途：从ACTIVE_CACHE数组中删除文件的缓存项。
+*/ 
 static int remove_file_from_cache(char *path)
 {
     int pos = cache_name_pos(path, strlen(path));
-    if (pos < 0) {   /* If exact match found. */
+    if (pos < 0) {   /*
+ 如果找到完全匹配的话。
+*/ 
         pos = -pos-1;
         active_nr--;
         if (pos < active_nr)
@@ -325,38 +99,36 @@ static int remove_file_from_cache(char *path)
 }
 
 /*
- * Function: `add_cache_entry`
- * Parameters:
- *      -ce: The cache entry to be added to the `active_cache` array.
- * Purpose: Insert a cache entry into the `active_cache` array
- *          lexicographically.
- */
+ *功能：`添加缓存进入`*参数：*-ce：要添加到`active_cache`数组中的缓存条目。*用途：在`active_cache`数组中插入缓存条目*按词典顺序排列。
+*/ 
 static int add_cache_entry(struct cache_entry *ce)
 {
     /*
-     * Get the index where the cache entry will be inserted in the 
-     * active_cache array. 
-     */
+ *获取缓存条目将插入到*ACTIVE_CACHE阵列。
+*/ 
     int pos;   
     pos = cache_name_pos(ce->name, ce->namelen);
 
-    /* Linus Torvalds: existing match? Just replace it */
+    /*
+ 莱纳斯·托瓦尔兹：现有的对手？只要把它换掉就行了。
+*/ 
     if (pos < 0) {
         active_cache[-pos-1] = ce;
         return 0;
     }
 
     /*
-     * Make sure the `active_cache` array has space for the additional cache
-     * entry.
-     */
+ *确保`active_cache`阵列有空间容纳额外的缓存*进入。
+*/ 
     if (active_nr == active_alloc) {
         active_alloc = alloc_nr(active_alloc);
         active_cache = realloc(active_cache, 
                                active_alloc * sizeof(struct cache_entry *));
     }
 
-    /* Insert the new cache entry into the active_cache array. */
+    /*
+ 将新的缓存条目插入到active_cache数组中。
+*/ 
     active_nr++;
     if (active_nr > pos)
         memmove(active_cache + pos + 1, active_cache + pos, 
@@ -366,30 +138,31 @@ static int add_cache_entry(struct cache_entry *ce)
 }
 
 /*
- * Function: `index_fd`
- * Parameters:
- *      -path: The path of the file to add to the object store.
- *      -namelen: The length of the path/filename to add.
- *      -ce: The cache entry structure corresponding to the file.
- *      -fd: The file descriptor associated with the file to be added.
- *      -st: The `stat` object containing info about the file to be added.
- * Purpose: Construct a blob object, compress it, calculate the SHA1 hash of
- *          the compressed blob object, then write the blob object to the 
- *          object database.
- */ 
+ *函数：`index_fd`*参数：*-Path：要添加到对象存储的文件的路径。*-namelen：要添加的路径/文件名的长度。*-ce：文件对应的缓存条目结构。*-fd：需要添加的文件关联的文件描述符。*-st：包含要添加的文件信息的`stat`对象。*用途：构造一个BLOB对象，压缩，计算的SHA1散列*压缩的BLOB对象，然后将该BLOB对象写入*对象数据库。
+*/  
 static int index_fd(const char *path, int namelen, struct cache_entry *ce, 
                     int fd, struct stat *st)
 {
-    /* Declare zlib z_stream structure. */
+    /*
+ 声明zlib z_stream结构。
+*/ 
     z_stream stream;
-    /* Number of bytes to allocate for next compressed output. */
+    /*
+ 分配给下一个压缩输出的字节数。
+*/ 
     int max_out_bytes = namelen + st->st_size + 200; 
-    /* Allocate `max_out_bytes` of space to store next compressed output. */
+    /*
+ 分配`max_out_bytes`空间来存储下一个压缩输出。
+*/ 
     void *out = malloc(max_out_bytes);
-    /* Allocate space to store file metadata. */
+    /*
+ 分配空间以存储文件元数据。
+*/ 
     void *metadata = malloc(namelen + 200);
 
-    /* Map contents of file to be cached to memory. */
+    /*
+ 将要缓存的文件内容映射到内存。
+*/ 
     #ifndef BGIT_WINDOWS
     void *in = mmap(NULL, st->st_size, PROT_READ, MAP_PRIVATE, fd, 0);
     #else
@@ -402,14 +175,20 @@ static int index_fd(const char *path, int namelen, struct cache_entry *ce,
     CloseHandle( fhandle );
     #endif
 
-    /* Declare an SHA context structure. */
+    /*
+ 声明SHA上下文结构。
+*/ 
     SHA_CTX c;
 
-    /* Release the file descriptor `fd` since we no longer need it. */
+    /*
+ 释放文件描述符`fd`，因为我们不再需要它。
+*/ 
     close(fd);
 
     #ifndef BGIT_WINDOWS
-    /* Return -1 if memory allocation for the `out` or `in` memory failed. */
+    /*
+ `out`或`in`内存分配失败，返回-1。
+*/ 
     if (!out || (int)(long)in == -1)
         return -1;
     #else
@@ -417,98 +196,111 @@ static int index_fd(const char *path, int namelen, struct cache_entry *ce,
         return -1;
     #endif
 
-    /* Initialize the zlib stream to contain null characters. */
+    /*
+ 将zlib流初始化为包含空字符。
+*/ 
     memset(&stream, 0, sizeof(stream));
 
     /*
-     * Initialize the compression stream for optimized compression 
-     * (as opposed to speed). 
-     */
+ *初始化压缩流以优化压缩*(相对于速度)。
+*/ 
     deflateInit(&stream, Z_BEST_COMPRESSION);
 
     /*
-     * Linus Torvalds: ASCII size + nul byte
-     */    
-    stream.next_in = metadata;   /* Set file metadata as the first addition */
-                                 /* to the compression stream input. */
+ *Linus Torvalds：ASCII大小+NUL字节。
+*/     
+    stream.next_in = metadata;   /*
+ 将文件元数据设置为第一个添加。
+*/ 
+                                 /*
+ 传输到压缩流输入。
+*/ 
     /*
-     * Write `blob ` to the `metadata` array, followed by the size of the 
-     * file being added to the cache.  Set the number of bytes available as
-     * input for the next compression equal to the number of characters 
-     * written + 1 (for the terminating null character).
-     */
+ *将`BLOB`写入`metadata`数组，后跟*正在将文件添加到缓存。将可用字节数设置为*下一次压缩的输入等于字符数*写入+1(用于终止空字符)。
+*/ 
     stream.avail_in = 1 + sprintf(metadata, "blob %lu", 
                                   (unsigned long) st->st_size);
-    /* Specify `out` as the location to write the next compressed output. */
+    /*
+ 指定`out`作为写入下一个压缩输出的位置。
+*/ 
     stream.next_out = out;
-    /* Number of bytes available for storing the next compressed output. */
+    /*
+ 可用于存储下一个压缩输出的字节数。
+*/ 
     stream.avail_out = max_out_bytes;
 
-    /* Compress the data, which so far is just the file metadata. */
+    /*
+ 压缩数据，到目前为止只是文件元数据。
+*/ 
     while (deflate(&stream, 0) == Z_OK)
-        /* Linus Torvalds: nothing */;
+        /*
+ 莱纳斯·托瓦尔兹：什么都没有。
+*/ ;
 
-    /* Add the file content to the compression stream input. */
+    /*
+ 将文件内容添加到压缩流输入。
+*/ 
     stream.next_in = in;
     stream.avail_in = st->st_size;
 
-    /* Compress the file content. */
+    /*
+ 压缩文件内容。
+*/ 
     while (deflate(&stream, Z_FINISH) == Z_OK)
-        /* Linus Torvalds: nothing */;
+        /*
+ 莱纳斯·托瓦尔兹：什么都没有。
+*/ ;
 
-    /* Free data structures that were used for compression. */
+    /*
+ 用于压缩的空闲数据结构。
+*/ 
     deflateEnd(&stream);
-    /* Initialize the `c` SHA context structure. */
+    /*
+ 初始化`c`SHA上下文结构。
+*/ 
     SHA1_Init(&c);
     /*
-     * Calculate the hash of the compressed output, which has total size 
-     * `stream.total_out`. 
-     */
+ *计算压缩输出的哈希值，总大小为*`Stream.Total_out`。
+*/ 
     SHA1_Update(&c, out, stream.total_out); 
     /*
-     * Store the SHA1 hash of the compressed output in the cache entry's 
-     * `sha1` member. 
-     */
+ *将压缩输出的SHA1散列存储在缓存条目的*`sha1`成员。
+*/ 
     SHA1_Final(ce->sha1, &c);
 
     /*
-     * Write the blob object to the object store and return with the return
-     * value of the write_sha1_buffer function. 
-     */
+ *将BLOB对象写入对象存储并随返回一起返回*WRITE_SHA1_BUFFER函数的值。
+*/ 
     return write_sha1_buffer(ce->sha1, out, stream.total_out); 
 }
 
 /*
- * Function: `add_file_to_cache`
- * Parameters:
- *      -path: The path of the file to add to the object store and index.
- * Purpose: Get information about the file to add to the cache, store the file 
- *          metadata in a cache_entry structure, then call the `index_fd()` 
- *          function to construct a blob object and write it to the object 
- *          store, and the `add_cache_entry()` function to insert the cache 
- *          entry into the `active_cache` array lexicographically.
- */
+ *函数：`添加_文件_到_缓存`*参数：*-Path：要添加到对象存储和索引的文件的路径。*用途：获取要添加到缓存的文件的信息，存储该文件*缓存_条目结构中的元数据，然后调用`index_fd()`*构造BLOB对象并将其写入对象的函数*商店、。以及用于插入缓存的`add_cache_entry()`函数*按字典顺序进入`active_cache`数组。
+*/ 
 static int add_file_to_cache(char *path)
 {
     int size, namelen;
-    /* Used to reference a cache entry. */
+    /*
+ 用于引用缓存条目。
+*/ 
     struct cache_entry *ce; 
     /*
-     * Used to store file information obtained through an `fstat()` function 
-     * call. 
-     */
+ *用于存储通过`fstat()`函数获取的文件信息*呼叫。
+*/ 
     struct stat st;
-    /* File descriptor for the file to add to the cache. */
+    /*
+ 要添加到缓存的文件的文件描述符。
+*/ 
     int fd;
 
-    /* Open the file to add to the cache and return a file descriptor. */
+    /*
+ 打开要添加到缓存的文件并返回文件描述符。
+*/ 
     fd = open(path, O_RDONLY); 
 
     /*
-     * If the `open()` command fails, return -1. Remove the corresponding 
-     * cache entry from the active_cache array if the file does not exist in 
-     * the working directory.
-     */
+ *如果`open()`命令失败，则返回-1。删除相应的*如果文件不存在，则缓存active_cache数组中的条目
+*/ 
     if (fd < 0) {
         if (errno == ENOENT)
             return remove_file_from_cache(path);
@@ -516,29 +308,37 @@ static int add_file_to_cache(char *path)
     }
 
     /*
-     * Get file information and store it in the `st` stat structure. If 
-     * fstat() fails, release the file descriptor and return -1.
-     */
+ 
+*/ 
     if (fstat(fd, &st) < 0) {
         close(fd);
         return -1;
     }
 
-    /* Get the length of the file path string. */
+    /*
+ 获取文件路径字符串的长度。
+*/ 
     namelen = strlen(path); 
-    /* Calculate the size to allocate to the cache entry in bytes. */
+    /*
+ 以字节为单位计算要分配给缓存条目的大小。
+*/ 
     size = cache_entry_size(namelen); 
-    /* Allocate `size` bytes to the cache entry. */
+    /*
+ 为缓存条目分配`size`字节。
+*/ 
     ce = malloc(size); 
-    /* Initialize the cache entry to contain null characters. */
+    /*
+ 初始化缓存条目以包含空字符。
+*/ 
     memset(ce, 0, size); 
-    /* Copy `path` into the cache entry's `name` member. */
+    /*
+ 将`path`复制到缓存条目的`name`成员中。
+*/ 
     memcpy(ce->name, path, namelen); 
 
     /*
-     * Copy the file metadata obtained through the fstat() call to the cache
-     * entry structure members. 
-     */
+ *将通过fstat()调用获取的文件元数据复制到缓存*进入结构成员。
+*/ 
     ce->ctime.sec = STAT_TIME_SEC( &st, st_ctim );
     ce->ctime.nsec = STAT_TIME_NSEC( &st, st_ctim );
     ce->mtime.sec = STAT_TIME_SEC( &st, st_mtim );
@@ -552,65 +352,75 @@ static int add_file_to_cache(char *path)
     ce->namelen = namelen;
 
     /*
-     * Call the index_fd() function to construct a blob object, compress it, 
-     * calculate the SHA1 hash of the compressed blob object, then write the 
-     * blob object to the object database.
-     */
+ *调用index_fd()函数构造BLOB对象，压缩，*计算压缩的BLOB对象的SHA1散列，然后将*BLOB对象复制到对象数据库。
+*/ 
     if (index_fd(path, namelen, ce, fd, &st) < 0)
         return -1;
 
     /*
-     * Insert the cache entry into the active_cache array lexicographically
-     * and then return using the return value of `add_cache_entry`.
-     */
+ *按词典顺序将缓存条目插入active_cache数组*然后返回`add_cache_entry`。
+*/ 
     return add_cache_entry(ce);
 }
 
 /*
- * Function: `write_cache`
- * Parameters:
- *      -newfd: File descriptor associated with the index lock file.
- *      -cache: The array of pointers to cache entry structures to write to 
- *              the index lock file.
- *      -entries: The number of cache entries in the `active_cache` array.
- * Purpose: Construct the cache header, calculate the SHA1 hash of the cache 
- *          header and the cache entries in the `active_cache` array, and 
- *          then write them to the `.dircache/index.lock` file.
- */
+ *函数：`WRITE_cache`*参数：*-newfd：与索引锁文件关联的文件描述符。*-CACHE：指向要写入的缓存条目结构的指针数组*索引锁文件。*-条目：`active_cache`数组中的缓存条目数。*用途：构造缓存头，计算缓存的SHA1哈希值*`active_cache`数组中的头部和缓存条目，和*然后将它们写入`.dircache/index.lock`文件。
+*/ 
 static int write_cache(int newfd, struct cache_entry **cache, int entries)
 {
-    SHA_CTX c;                 /* Declare an SHA context structure. */
-    struct cache_header hdr;   /* Declare a cache_header structure. */
-    int i;                     /* For loop iterator. */
+    SHA_CTX c;                 /*
+ 声明SHA上下文结构。
+*/ 
+    struct cache_header hdr;   /*
+ 声明CACHE_HEADER结构。
+*/ 
+    int i;                     /*
+ For循环迭代器。
+*/ 
 
-    /* Set this to the signature defined in "cache.h". */
+    /*
+ 将其设置为“cache.h”中定义的签名。
+*/ 
     hdr.signature = CACHE_SIGNATURE; 
-    /* The version is always set to 1 in this release. */
+    /*
+ 在此版本中，版本始终设置为1。
+*/ 
     hdr.version = 1; 
     /*
-     * Store the number of cache entries in the `active_cache` array in the 
-     * cache header. 
-     */
+ *将`active_cache`数组中的缓存条目数存储在*缓存头。
+*/ 
     hdr.entries = entries; 
 
-    /* Initialize the `c` SHA context structure. */
+    /*
+ 初始化`c`SHA上下文结构。
+*/ 
     SHA1_Init(&c); 
-    /* Update the running SHA1 hash calculation with the cache header. */
+    /*
+ 使用缓存头更新正在运行的SHA1哈希计算。
+*/ 
     SHA1_Update(&c, &hdr, offsetof(struct cache_header, sha1));
-    /* Update the running SHA1 hash calculation with each cache entry. */
+    /*
+ 使用每个缓存条目更新正在运行的SHA1哈希计算。
+*/ 
     for (i = 0; i < entries; i++) {
         struct cache_entry *ce = cache[i];
         int size = ce_size(ce);
         SHA1_Update(&c, ce, size);
     }
-    /* Store the final SHA1 hash in the header. */
+    /*
+ 将最终的SHA1散列存储在标头中。
+*/ 
     SHA1_Final(hdr.sha1, &c);
 
-    /* Write the cache header to the index lock file. */
+    /*
+ 将缓存头写入索引锁文件。
+*/ 
     if (write(newfd, &hdr, sizeof(hdr)) != sizeof(hdr))
         return -1;
 
-    /* Write each of the cache entries to the index lock file. */
+    /*
+ 将每个缓存条目写入索引锁文件。
+*/ 
     for (i = 0; i < entries; i++) {
         struct cache_entry *ce = cache[i];
         int size = ce_size(ce);
@@ -621,13 +431,8 @@ static int write_cache(int newfd, struct cache_entry **cache, int entries)
 }        
 
 /*
- * Linus Torvalds: We fundamentally don't like some paths: we don't want
- * dot or dot-dot anywhere, and in fact, we don't even want any other 
- * dot-files (.dircache or anything else). They are hidden, for chist sake.
- *
- * Linus Torvalds: Also, we don't want double slashes or slashes at the end 
- * that can make pathnames ambiguous. 
- */
+ *莱纳斯·托瓦尔兹：我们根本不喜欢一些道路：我们不想*任何地方都是点或点点的，事实上，我们甚至不想要任何其他的*点文件(.dircache或任何其他文件)。看在上帝的份上，它们是隐藏的。**莱纳斯·托瓦尔兹：还有，我们不想要双斜杠或末尾的斜杠*这可能会使路径名模棱两可。
+*/ 
 static int verify_path(char *path)
 {
     char c;
@@ -648,33 +453,35 @@ inside:
 }
 
 /*
- * Function: `main`
- * Parameters:
- *      -argc: The number of command-line arguments supplied, inluding the 
- *             command itself.
- *      -argv: An array of the command line arguments, including the command 
- *             itself.
- * Purpose: Standard `main` function definition. Runs when the executable 
- *          `update-cache` is run from the command line.
- */
+ *功能：`main`*参数：*-argc：提供的命令行参数的数量，包括*命令本身。*-argv：命令行参数的数组，包括命令*本身。*用途：标准`main`函数定义。运行时，可执行文件*`update-cache`从命令行运行。
+*/ 
 int main(int argc, char **argv)
 {
-    int i;         /* Iterator for `for` loop below. */
-    int newfd;     /* File descriptor to reference the index lock file. */
-    int entries;   /* The number of entries in the cache, as returned by */
-                   /* read_cache(). */
+    int i;         /*
+ 下面是`for‘循环的迭代器。
+*/ 
+    int newfd;     /*
+ 引用索引锁文件的文件描述符。
+*/ 
+    int entries;   /*
+ 缓存中的条目数，由返回。
+*/ 
+                   /*
+ 读取缓存()。
+*/ 
 
-    /* The name of the cache file. */
+    /*
+ 缓存文件的名称。
+*/ 
     char cache_file[]      = ".dircache/index";
-    /* The name of the cache lock file. */
+    /*
+ 缓存锁定文件的名称。
+*/ 
     char cache_lock_file[] = ".dircache/index.lock"; 
 
     /*
-     * Read in the contents of the `.dircache/index` file into the 
-     * `active_cache` array and return the number of cache entries. Display an
-     * error message if the number of entries is < 0, indicating
-     * an error in reading the cache, then return -1.
-     */
+ *将`.dircache/index`文件的内容读入*`active_cache`数组，返回缓存条目数。显示一个*条目数&lt;0的错误信息，表示*读取缓存时出错，然后返回-1。
+*/ 
     entries = read_cache();
     if (entries < 0) {
         perror("cache corrupted");
@@ -682,11 +489,8 @@ int main(int argc, char **argv)
     }
 
     /*
-     * Create and open a new cache lock file called `.dircache/index.lock` and 
-     * return a file descriptor to reference it. Display an error message if 
-     * the open() command returns a value < 0, indicating failure, then return 
-     * -1.
-     */
+ *创建并打开一个名为`.dircache/index.lock`的新缓存锁文件，并*返回文件描述符进行引用。如果出现以下情况，则显示错误消息*OPEN()命令返回值&lt;0表示失败，然后返回*-1.。
+*/ 
     newfd = OPEN_FILE(cache_lock_file, O_RDWR | O_CREAT | O_EXCL, 0600);
     if (newfd < 0) {
         perror("unable to create new cachefile");
@@ -694,37 +498,25 @@ int main(int argc, char **argv)
     }
 
     /*
-     * Loop over the files to add to the cache, whose paths or filenames were 
-     * passed in as command line arguments:
-     *
-     * ./update-cache path1 path2...
-     */
+ *循环要添加到缓存的文件，其路径或文件名为*作为命令行参数传入：**./更新-缓存路径1路径2...。
+*/ 
     for (i = 1 ; i < argc; i++) {
-        /* Store the ith path that was passed as a command line argument. */
+        /*
+ 存储作为命令行参数传递的第i个路径。
+*/ 
         char *path = argv[i];
 
         /*
-         * Verify the path. If the path is not valid, continue to the next 
-         * file. 
-         */
+ *验证路径。如果路径无效，请继续下一步*文件。
+*/ 
         if (!verify_path(path)) {
             fprintf(stderr, "Ignoring path %s\n", argv[i]);
             continue;
         }
 
         /*
-         * This calls `add_file_to_cache()`, which does a few things:
-         *      1) Opens the file at `path`.
-         *      2) Gets information about the file and stores the file
-         *         metadata in a cache_entry structure.
-         *      3) Calls the index_fd() function to construct a corresponding
-         *         blob object and write it to the object database.
-         *      4) Calls the add_cache_entry() function to insert the cache
-         *         entry into the active_cache array lexicographically.
-         *
-         * If any of these steps leads to a nonzero return code (i.e. fails), 
-         * jump to the `out` label below.
-         */
+ *这将调用`add_file_to_cache()`，它做了几件事：*1)打开`path`处的文件。*2)获取文件信息并存储文件*CACHE_ENTRY结构中的元数据。*3)调用index_fd()函数构造对应的*BLOB对象并将其写入对象数据库。*4)呼叫。函数的作用是：插入缓存*按词典顺序进入ACTIVE_CACHE数组。**如果这些步骤中的任何一个导致非零返回代码(即失败)，*跳转到下面的`out`标签。
+*/ 
         if (add_file_to_cache(path)) {
             fprintf(stderr, "Unable to add %s to database\n", path);
             goto out;
@@ -732,12 +524,8 @@ int main(int argc, char **argv)
     }
 
     /*
-     * This does a few things as well:
-     *      1) Calls `write_cache()` to set up a cache header, calculate the
-     *         SHA1 hash of the header and the cache entries, and then write 
-     *         the entire cache to the index lock file.
-     *      2) Renames the `.dircache/index.lock` file to `.dircache/index`.
-     */
+ *这也做了几件事：*1)调用`WRITE_CACHE()`设置缓存头，计算*对标头和缓存条目进行SHA1散列，然后写入*整个缓存到索引锁文件。*2)将`.dircache/index.lock`文件重命名为`.dircache/index`。
+*/ 
     if (!write_cache(newfd, active_cache, active_nr)) {
         close(newfd);
         if (RENAME(cache_lock_file, cache_file) != RENAME_FAIL) {
@@ -745,7 +533,9 @@ int main(int argc, char **argv)
         }
     }
 
-/* Unlink the `.dircache/index.lock` file. */
+/*
+ 解除`.dircache/index.lock`文件的链接。
+*/ 
 out:
     close(newfd);
     #ifndef BGIT_WINDOWS

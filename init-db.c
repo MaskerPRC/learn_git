@@ -1,36 +1,7 @@
+// THIS_SOURCES_HAS_BEEN_TRANSLATED 
 /*
- *  All documentation (comments) unless explicitly noted:
- *
- *      Copyright 2018, AnalytixBar LLC, Jacob Stopak
- *
- *  All code & explicitly labelled documentation (comments):
- *      
- *      Copyright 2005, Linus Torvalds
- *
- *  This program is free software; you can redistribute it and/or
- *  modify it under the terms of the GNU General Public License
- *  version 2 as published by the Free Software Foundation.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with this program; if not, see <http://www.gnu.org/licenses/>.
- *
- **************************************************************************
- *
- *  The purpose of this file is to be compiled into an executable
- *  called `init-db`. When `init-db` is run from the command line
- *  it will initialize a Git repository by creating the object
- *  store (a directory called `.dircache/objects` by default)
- *  which will store the content that users commit in order to
- *  track the history of the repository over time.
- *
- *  This whole file (i.e. everything in the main function) will run
- *  when ./init-db executable is run from the command line.
- */
+ *除非明确说明，否则所有文档(备注)：**版权所有2018，AnalytixBar LLC，Jacob Stopak**所有代码和明确标记的文档(注释)：**版权所有2005年，Linus Torvalds**这个程序是自由软件；您可以重新分发它和/或*根据GNU通用公共许可证的条款进行修改*自由软件基金会发布的版本2。**这个程序的分发是希望它能有用，*但没有任何保证；甚至没有*适销性或对某一特定目的的适用性。请参阅*GNU通用公共许可证，了解更多详细信息。**您应已收到GNU通用公共许可证的副本*与这项计划一起；如果不是，请参阅&lt;http://www.gnu.org/licenses/&gt;.*****************************************************************************此文件的目的是编译成可执行文件*调用`init-db`。当从命令行运行`init-db`时*它将通过创建对象来初始化Git存储库*store(默认目录名为`.dircache/Objects`)*它将存储用户提交的内容，以便*跟踪一段时间内存储库的历史记录。**整个文件(即Main函数中的所有内容)都将运行*当./init-db可执行文件从命令行运行时。
+*/ 
 
 #include "cache.h"
 
@@ -40,140 +11,41 @@
     #define MKDIR( path ) ( _mkdir( path ) )
 #endif
 
-/* The above 'include' allows use of the following functions and
-   variables from "cache.h" header file, ranked in order of first use
-   in this file. Most are functions/macros from standard C libraries
-   that are `#included` in "cache.h". Function names are followed by
-   parenthesis whereas variable/struct names are not:
-
-   -getenv(name): Get value of the environment variable `name`. Sourced from
-                  <stdlib.h>.
-
-   -DB_ENVIRONMENT: Constant string (defined via macro in "cache.h") used to 
-                    specify an environment variable to set the path/name of 
-                    the object store.
-
-   -mkdir(name, mode): Create a new directory `name` with permissions derived 
-                       from `mode`. Sourced from <sys/stat.h>.
-
-   -perror(message): Write `message` to standard error stream. Sourced from 
-                     <stdio.h>.
-
-   -exit(status): Stop execution of the program and exit with code `status`. 
-                  Sourced from <stdlib.h>.
-
-   -stat: Structure pointer used by stat() function to store information
-          related to a filesystem file. Sourced from <sys/stat.h>.
-
-   -stat(name, buf): Obtain information about file `name` and store it in the 
-                     area pointed to by `buf`, which is a pointer to a
-                     `stat` structure.
-                      
-   -S_ISDIR(mode): Determines whether a file is a directory based on its 
-                   `mode`. Sourced from <sys/stat.h>.
-
-   -fprintf(stream, message, ...): Write `message` to the output `stream`. 
-                                   Sourced from <stdio.h>.
-
-   -stderr: The stadard error stream. Sourced from <stdio.h>.
-
-   -DEFAULT_DB_ENVIRONMENT: Constant string (defined via macro in "cache.h") 
-                            with the default path of the object store.
-
-   -strlen(string): Return the length of `string` in bytes.
-
-   -errno: Error number of last error. Sourced from <errno.h>.
-
-   -EEXIST: Error macro indicating that an existing file was specified in a 
-            context where it only makes sense to specify a new file. Sourced 
-            from <errno.h>.
-
-   -malloc(size): Allocate unused space for an object whose size in bytes is 
-                  specified by `size` and whose value is unspecified. Sourced 
-                  from <stdlib.h>.
-
-   -memcpy(s1, s2, n): Copy n bytes from the object pointed to by s2 into the 
-                       object pointed to by s1. Sourced from <string.h>.
-
-   -sprintf(s, message, ...): Writes `message` string constant to string 
-                              variable `s` followed by the null character 
-                              '\0'. Sourced from <stdio.h>.
-
-   ****************************************************************
-
-   The following variables and functions are defined in this source file:
-
-   -main(argc, argv): The main function which runs each time the init-db 
-                      command is run.
-
-   -argc: The number of command line arguments supplied when executing 
-          init-db.
-
-   -argv: Array containing command line argument strings.
-
-   -sha1_dir: The path to the object store.
-
-   -path: A dynamic character string that is used to build the path to each 
-          subdirectory in the object store, i.e., one subdirectory for each 
-          number between 0 and 255 in hexadecimal. The name of each 
-          subdirectory will represent the first two digits of the SHA1 hashes
-          of the objects stored in that subdirectory.
-
-   -len: The length of the constant string in the `sha1_dir` variable.
-
-   -i: For loop counter used to create subdirectories in object store.
-
-   -fd: Declared but not used. Linus Torvalds is mortal too :D.
-
-   -st: `stat` structure used to store file information obtained from `stat()` 
-        function call.
-*/
+/*
+ 上面的‘Include’允许使用以下函数和“cache.h”头文件中的变量，按第一次使用的顺序排序在这份文件中。大多数是标准C库中的函数/宏它们是“cache.h”中的`#includded`。函数名后面跟有圆括号，而变量/结构名称不是：-getenv(Name)：获取环境变量`name`的值。来源：&lt;stdlib.h&gt;。-DB_Environment：常量字符串(通过“cache.h”中的宏定义)，用于指定要设置其路径/名称的环境变量对象存储。-mkdir(名称，模式)：创建一个派生权限的新目录`name`来自`mode`。来源：&lt;sys/stat.h&gt;。-perror(Message)：将`Message`写入标准错误流。来源：&lt;stdio.h&gt;。-Exit(Status)：停止程序执行，退出，代码为`status`。来源：&lt;stdlib.h&gt;。-stat：结构指针，由stat()函数用来存储信息与文件系统文件相关。来源：&lt;sys/stat.h&gt;。-stat(name，buf)：获取文件`name`的信息，并存储在由`buf`指向的区域，它是指向`stat`结构。-S_ISDIR(MODE)：根据文件的‘mode`。来源：&lt;sys/stat.h&gt;。-fprint tf(stream，Message，...)：将`Message`写入输出`stream`。来源：&lt;stdio.h&gt;。-stderr：标准错误流。来源：&lt;stdio.h&gt;。-DEFAULT_DB_ENVIRONMENT：常量字符串(通过cache.h中的宏定义)使用对象存储区的默认路径。-strlen(字符串)：返回`字符串`的长度，单位为字节。-errno：上次错误的错误号。来源：&lt;errno.h&gt;。-EEXIST：错误宏指示现有文件是在上下文中，只有指定新文件才有意义。来源：来自&lt;errno.h&gt;。-Malloc(Size)：为大小为字节数的对象分配未使用的空间由`size`指定，其值未指定。来源：来自&lt;stdlib.h&gt;。-Memcpy(s1，s2，n)：将s2指向的对象中的n个字节复制到由S1指向的对象。来源：&lt;string.h&gt;。-print intf(s，Message，...)：将`Message`字符串常量写入字符串变量`s`，后跟空字符‘\0’。来源：&lt;stdio.h&gt;。****************************************************************此源文件中定义了以下变量和函数：-Main(ARGC，Argv)：每次运行init-db时运行的主函数命令正在运行。-argc：执行时提供的命令行参数个数初始化数据库。-argv：包含命令行参数字符串的数组。-sha1_dir：对象存储的路径。-Path：用于构建每个路径的动态字符串子目录，即，每个目录对应一个子目录十六进制中介于0和255之间的数字。每个人的名字子目录将表示SHA1散列的前两位存储的对象的
+*/ 
 
 /*
- * Function: `main`
- * Parameters:
- *      -argc: The number of command-line arguments supplied, inluding the 
- *             command itself.
- *      -argv: An array of the command line arguments, including the command 
- *             itself.
- * Purpose: Standard `main` function definition. Runs when the executable 
- *          `init-db` is run from the command line.
- */
+ *功能：`main`*参数：*-argc：提供的命令行参数的数量，包括*命令本身。*-argv：命令行参数的数组，包括命令*本身。*用途：标准`main`函数定义。运行时，可执行文件*`init-db`从命令行运行。
+*/ 
 int main(int argc, char **argv)
 {
-    /* 
-     * The `char *` format of the variables below allows them to be used as 
-     * strings of characterss instead of just holding one single character. 
-     * Just think of these as strings.
-     */
+    /*
+ *下面变量的`char*`格式允许将它们用作*字符串，而不是只包含一个字符。*只需将这些视为字符串。
+*/ 
     char *sha1_dir, *path;
 
-    /* Declaring three integers to be used later. */
+    /*
+ 声明三个稍后要使用的整数。
+*/ 
     int len, i, fd;
 
     /*
-     * Attempt to create a directory called `.dircache` in the current 
-     * directory. If it fails, `mkdir()` will return -1 and the program will 
-     * print an error message and exit.
-     */
+ *尝试在当前目录中创建名为`.dircache`的目录*目录。如果失败，`mkdir()`将返回-1，程序将*打印错误消息并退出。
+*/ 
     if (MKDIR(".dircache") < 0) {
         perror("unable to create .dircache");
         exit(1);
     }
     
     /*
-     * Set `sha1_dir` (i.e. the path to the object store) to the value of the
-     * `DB_ENVIRONMENT` environment variable, which defaults to 
-     * `SHA1_FILE_DIRECTORY` as defined in "cache.h". If the environment 
-     * variable is not defined (and it most likely won't be), getenv() will 
-     * return a null pointer. 
-     */
+ *将`sha1_dir`(即对象存储的路径)设置为*`DB_ENVIRONMENT`环境变量，默认为*`SHA1_FILE_DIRECTORY`，定义在cache.h中。如果环境*未定义变量(很可能不会定义)，则getenv()将*返回空指针。
+*/ 
     sha1_dir = getenv(DB_ENVIRONMENT);
 
     /*
-     * This code block will only be executed if `sha1_dir` is NOT null, i.e., 
-     * if the environment variable above was defined.
-     */
+ *仅当`sha1_dir`不为空时才执行此代码块，即*如果定义了上面的环境变量。
+*/ 
     if (sha1_dir) {
         struct stat st;
         if (!(stat(sha1_dir, &st) < 0) && S_ISDIR(st.st_mode))
@@ -182,30 +54,23 @@ int main(int argc, char **argv)
     }
 
     /*
-     * Fall through here if a custom object store path was not specified or
-     * was not valid. 
-     */
+ *如果未指定自定义对象存储路径或*无效。
+*/ 
 
     /*
-     * Set `sha1_dir` to the default value `.dircache/objects` as defined in 
-     * "cache.h", then print a message to the screen conveying this.
-     */
+ *将`sha1_dir`设置为中定义的默认值`.dircache/Objects`*“cache.h”，然后在屏幕上打印一条消息传达这一点。
+*/ 
     sha1_dir = DEFAULT_DB_ENVIRONMENT;
     fprintf(stderr, "defaulting to private storage area\n");
 
     /*
-     * Set `len` to the length of the string in `sha1_dir`, i.e., the length
-     * of the string `.dircache/objects`. This will be used later to build the 
-     * subdirectories in the object database, where hash-indexed objects will 
-     * be stored.
-     */
+ *将`len`设置为`sha1_dir`中字符串的长度，即字符串`.dircache/Objects`的*。这将在以后用来构建*对象数据库中的子目录，其中哈希索引的对象将*保存。
+*/ 
     len = strlen(sha1_dir);
 
     /*
-     * Attempt to create a directory inside `.dircache` called `objects`. If 
-     * it fails, `mkdir()` will return `-1` and the program will print a 
-     * message and exit.
-     */
+ *尝试在`.dircache`内创建一个名为`objects`的目录。如果*失败，`mkdir()`将返回`-1`，程序将打印*消息和退出。
+*/ 
     if (MKDIR(sha1_dir) < 0) {
         if (errno != EEXIST) {
             perror(sha1_dir);
@@ -214,35 +79,27 @@ int main(int argc, char **argv)
     }
 
     /*
-     * Allocate space for `path` with size len` (size in bytes of `sha1_dir`) 
-     + + 40 bytes.
-     */
+ *为`path`分配空间，大小为len`(`sha1_dir`的字节大小)++40字节。
+*/ 
     path = malloc(len + 40);
 
-    /* Copy the `sha1_dir` to `path`. */
+    /*
+ 将`sha1_dir`复制到`路径`。
+*/ 
     memcpy(path, sha1_dir, len);
 
     /*
-     * Execute this loop 256 times to create the 256 subdirectories inside the 
-     * `.dircache/objects/` directory. The subdirectories will be named `00`
-     * to `ff`, which are the hexadecimal representations of the numbers 0 to 
-     * 255. Each subdirectory will be used to hold the objects whose SHA1 hash 
-     * values in hexadecimal representation start with those two digits.
-     */
+ *执行此循环256次，以在*`.目录缓存/对象/`目录。子目录将命名为`00`*到`ff`，它们是数字0到*255。每个子目录将用于保存其SHA1散列的对象*十六进制表示法中的值以这两位数字开头。
+*/ 
     for (i = 0; i < 256; i++) {
         /*
-         * Convert `i` to a two-digit hexadecimal number and append it to the 
-         * path variable after the `.dircache/objects/` part. That way, each 
-         * time through the loop we build up one of the following paths: 
-         * `.dircache/objects/00`, `.dircache/objects/01`, ...,
-         * `.dircache/objects/fe`, `.dircache/objects/ff`.
-         */
+ *将`i`转换为两位十六进制数，并将其追加到*`.dircache/Objects/`部分后的路径变量。这样一来，每个人*在循环过程中，我们构建以下路径之一：*`.目录缓存/对象/00`，`.目录缓存/对象/01`，...，*`.dircache/对象/fe`、`.dircache/对象/ff`。
+*/ 
         sprintf(path+len, "/%02x", i);
 
         /*
-         * Attempt to create the current subdirectory. If it fails, `mkdir()` 
-         * will return -1 and the program will print a message and exit.
-         */
+ *尝试创建当前子目录。如果失败，则返回`mkdir()`*将返回-1，程序将打印一条消息并退出。
+*/ 
         if (MKDIR(path) < 0) {
             if (errno != EEXIST) {
                 perror(path);
